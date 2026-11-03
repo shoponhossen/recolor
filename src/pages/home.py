@@ -3,19 +3,14 @@ from app import ReColor
 
 
 def home_view(page: ft.Page, app: ReColor) -> ft.View:
-    async def open_editor(e):
-        await page.push_route("/editor")
-
     async def create_project(e):
         await page.push_route("/create")
-
-    loading = ft.ProgressRing(visible=True, width=20, height=20)
 
     async def open_project(e):
         p_name = e.control.title.value
 
         # Loading
-        loading.visible = True
+        page.overlay.append(ft.ProgressBar())
         lv.disabled = True
         page.update()
 
@@ -23,7 +18,7 @@ def home_view(page: ft.Page, app: ReColor) -> ft.View:
         print(f"Opened project '{p_name}'.")
         await page.push_route("/editor")
 
-    lv = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=True)
+    lv = ft.ListView(expand=True, spacing=10, auto_scroll=True)
 
     for project_name in app.projects_manager.list_projects():
         lv.controls.append(
@@ -33,20 +28,51 @@ def home_view(page: ft.Page, app: ReColor) -> ft.View:
             )
         )
 
+    main_area = ft.SafeArea(
+        content=ft.Column(
+            [
+                # Create Project Card Container
+                ft.Container(
+                    content=ft.Card(
+                        content=ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Icon(icon=ft.Icons.ADD, size=30),
+                                    ft.Text("Wanna create a new project?"),
+                                    ft.Text(
+                                        "Create Project.",
+                                        size=18,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                ],
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                            padding=ft.Padding.all(20),
+                        ),
+                    ),
+                    on_click=create_project,
+                    alignment=ft.Alignment.CENTER,
+                ),
+                ft.Container(height=10),
+                ft.Text("Recent Projects", weight=ft.FontWeight.BOLD),
+                ft.Column(
+                    [lv],
+                ),
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        ),
+    )
+
     return ft.View(
         route="/",
         appbar=ft.AppBar(
-            title=ft.Row(
-                [
-                    ft.Text("ReColor", weight=ft.FontWeight.BOLD),
-                    loading,
-                ]
-            ),
-            bgcolor=ft.Colors.SURFACE_CONTAINER,
+            title=ft.Text("ReColor", weight=ft.FontWeight.BOLD),
             actions=[
                 ft.IconButton(ft.Icons.SEARCH),
                 ft.IconButton(ft.Icons.ADD, on_click=create_project),
             ],
         ),
-        controls=[ft.SafeArea(content=ft.Column(controls=[lv]))],
+        controls=[main_area],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        expand=True,
     )
