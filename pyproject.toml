@@ -8,7 +8,8 @@ authors = [
     { name = "Flet developer", email = "you@example.com" }
 ]
 dependencies = [
-    "flet>=1.0.3"
+    "flet>=1.0.3",
+    "opencv-python>=5.0.0.93",
 ]
 
 [dependency-groups]

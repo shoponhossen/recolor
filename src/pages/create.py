@@ -1,17 +1,11 @@
 import flet as ft
 from datetime import datetime
-
 from app import ReColor
 
 
 def create_view(page: ft.Page, app: ReColor) -> ft.View:
-    async def go_back(e):
-        await page.push_route("/")
-
     appbar = ft.AppBar(
         title=ft.Text("Create New Project", weight=ft.FontWeight.BOLD),
-        bgcolor=ft.Colors.SURFACE_CONTAINER,
-        leading=ft.IconButton(ft.Icons.ARROW_BACK, on_click=go_back),
     )
 
     async def on_project_named_field_change(e):
@@ -42,11 +36,13 @@ def create_view(page: ft.Page, app: ReColor) -> ft.View:
                 project_name = project_name_field.value.strip()
 
                 if project_name:
-                    app.project.create(project_name, file.path)
-                    app.project.save()
-                    print(f"Project '{project_name}' created and saved.")
-                    print(f"Current project set to '{app.project.name}'.")
+                    pm = app.projects_manager
+                    pm.create_project(project_name, file.path)
+
+                    print(f"Project '{project_name}' created.")
+                    print(f"Current project set to '{pm.project.name}'.")
                     await page.push_route("/editor")
+
                 else:
                     print("Project name is empty.")
             else:

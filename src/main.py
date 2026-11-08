@@ -4,6 +4,7 @@ from colors import *
 
 from pages.home import home_view
 from pages.editor import editor_view
+from pages.selector import selector_view
 from pages.create import create_view
 
 
@@ -41,7 +42,7 @@ def main(page: ft.Page):
 
     # Define the App
     app = ReColor(page)
-    print("Projects directory:", app.projects_manager.projects_dir)
+    print("Projects directory:", app.projects_manager.projects_directory)
 
     print("Initial route:", page.route)
 
@@ -53,6 +54,9 @@ def main(page: ft.Page):
 
         if page.route == "/editor":
             page.views.append(editor_view(page, app))
+
+        if page.route == "/create/selector":
+            page.views.append(selector_view(page, app))
 
         if page.route == "/create":
             page.views.append(create_view(page, app))

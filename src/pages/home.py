@@ -14,7 +14,8 @@ def home_view(page: ft.Page, app: ReColor) -> ft.View:
         lv.disabled = True
         page.update()
 
-        app.project.open(p_name)
+        app.projects_manager.load_project(p_name)
+
         print(f"Opened project '{p_name}'.")
         await page.push_route("/editor")
 
