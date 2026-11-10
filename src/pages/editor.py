@@ -439,29 +439,62 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
     def export_image(e):
         async def do_export(fmt):
             page.pop_dialog()
+
+            loading_dlg = ft.AlertDialog(
+                modal=True,
+                content=ft.Row([
+                    ft.ProgressRing(color=ft.Colors.ORANGE_ACCENT_400),
+                    ft.Container(width=10),
+                    ft.Text("Rendering full-res image...", size=13, color=ft.Colors.WHITE),
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                bgcolor="#151A27",
+            )
+            page.show_dialog(loading_dlg)
+
             path = project.projects_directory / f"{project.name}_export.{fmt}"
-            project.export_full_image(path, quality=95)
-            page.show_dialog(ft.AlertDialog(
-                title=ft.Text("Exported!"),
-                content=ft.Text(f"Saved to:\n{path}"),
-                actions=[ft.TextButton("OK", on_click=lambda ev: page.pop_dialog())],
-            ))
+            try:
+                project.export_full_image(path, quality=95)
+                page.pop_dialog()  # Close loading
+                page.show_dialog(ft.AlertDialog(
+                    title=ft.Text("Export Complete!", size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                    content=ft.Text(f"Saved full resolution graded image to:\n{path}", size=12, color=ft.Colors.WHITE_70),
+                    actions=[ft.Button(content="OK", on_click=lambda ev: page.pop_dialog())],
+                    bgcolor="#151A27",
+                ))
+            except Exception as ex:
+                page.pop_dialog()
+                page.show_dialog(ft.AlertDialog(
+                    title=ft.Text("Export Failed", size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.RED_ACCENT_400),
+                    content=ft.Text(str(ex), size=12, color=ft.Colors.WHITE_70),
+                    actions=[ft.Button(content="OK", on_click=lambda ev: page.pop_dialog())],
+                    bgcolor="#151A27",
+                ))
+
         page.show_dialog(ft.AlertDialog(
-            title=ft.Text("Export Graded Image"),
-            content=ft.Text("Choose format:"),
+            title=ft.Text("Export Graded Image", size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+            content=ft.Text("Select export format (rendered at original camera resolution):", size=12, color=ft.Colors.WHITE_70),
             actions=[
-                ft.TextButton("JPEG", on_click=lambda ev: page.run_task(do_export, "jpg")),
-                ft.TextButton("PNG",  on_click=lambda ev: page.run_task(do_export, "png")),
+                ft.Button(content="JPEG", on_click=lambda ev: page.run_task(do_export, "jpg")),
+                ft.Button(content="PNG",  on_click=lambda ev: page.run_task(do_export, "png")),
                 ft.TextButton("Cancel", on_click=lambda ev: page.pop_dialog()),
             ],
+            bgcolor="#151A27",
         ))
 
-    async def go_add_mask(e):
-        """Create a new brush layer and go directly to mask studio."""
-        new_layer = project.add_layer(mask_type="brush")
-        app.active_mask_layer = new_layer
+    async def go_mask_studio(e):
+        """Switch directly between Editor and Mask Studio (Selector) for the active layer."""
+        app.active_mask_layer = project.selected_layer
         project.save()
         await page.push_route("/editor/selector")
+
+    def on_save_project(e):
+        project.save()
+        page.show_dialog(ft.AlertDialog(
+            title=ft.Text("Project Saved", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+            content=ft.Text(f"Saved '{project.name}' successfully.", size=12, color=ft.Colors.WHITE_70),
+            actions=[ft.Button(content="OK", on_click=lambda ev: page.pop_dialog())],
+            bgcolor="#151A27",
+        ))
 
     async def go_back(e):
         project.save()
@@ -514,14 +547,14 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
             actions=[
                 compare_btn,
                 ft.IconButton(
-                    ft.Icons.ADD_CIRCLE_OUTLINE,
-                    tooltip="Add Mask Layer",
+                    ft.Icons.AUTO_FIX_HIGH,
+                    tooltip="Mask Studio (Selector)",
                     icon_color=ft.Colors.ORANGE_ACCENT_400,
-                    on_click=go_add_mask,
+                    on_click=go_mask_studio,
                 ),
                 ft.IconButton(ft.Icons.REFRESH, tooltip="Reset Layer", on_click=reset_layer),
-                ft.IconButton(ft.Icons.FILE_DOWNLOAD, tooltip="Export", on_click=export_image),
-                ft.IconButton(ft.Icons.SAVE, tooltip="Save", on_click=lambda e: project.save()),
+                ft.IconButton(ft.Icons.FILE_DOWNLOAD, tooltip="Export Image", on_click=export_image),
+                ft.IconButton(ft.Icons.SAVE, tooltip="Save Project", on_click=on_save_project),
             ],
         ),
         controls=[

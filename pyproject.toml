@@ -10,6 +10,7 @@ authors = [
 dependencies = [
     "flet>=1.0.3",
     "opencv-python>=5.0.0.93",
+    "ultralytics>=8.4.208",
 ]
 
 [dependency-groups]

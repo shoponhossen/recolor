@@ -26,6 +26,7 @@ def main(page: ft.Page):
         if page.route == "/editor":
             page.views.append(editor_view(page, app))
         elif page.route in ("/editor/selector", "/create/selector"):
+            page.views.append(editor_view(page, app))
             page.views.append(selector_view(page, app))
         elif page.route == "/create":
             page.views.append(create_view(page, app))

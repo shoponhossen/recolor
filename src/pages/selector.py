@@ -4,10 +4,10 @@ Layout:
   AppBar (with title, show/hide panel toggle, done)
   Stack(expand) [
     GestureDetector(image, full area)
-    MaskListPanel (right=0, overlay, semi-transparent, toggleable)
+    MaskListPanel (anchored relative to the image container)
   ]
-  ToolOptionsBar (dynamic per tool: Brush, Eraser, Radial, Linear, Color)
-  ToolBar (bottom navigation)
+  ToolOptionsBar (dynamic per tool: Brush, Radial, Linear, Color, AI Select)
+  ToolBar (horizontally scrollable bottom navigation)
 """
 
 import flet as ft
@@ -18,12 +18,38 @@ import numpy as np
 import cv2
 import time
 import datetime
+import gc
 from pathlib import Path
 
 # ---- Colour constants for sub-mask modes ----
 ERASE_COLOR = (60, 100, 255)  # blue tint for erase sub-masks
 PAINT_COLOR = (50, 200, 100)  # green tint for paint sub-masks
 MAIN_COLOR = (255, 45, 45)  # red rubylith for main/effective
+
+
+# ---- Global FastSAM model instance ----
+_fastsam_model = None
+
+
+def get_fastsam_model():
+    return _fastsam_model
+
+
+def load_fastsam():
+    global _fastsam_model
+    model_path = Path(r"src/assets/models/FastSAM-s.pt").resolve()
+    if not model_path.exists():
+        model_path = Path("FastSAM-x.pt").resolve()
+    from ultralytics import FastSAM
+
+    _fastsam_model = FastSAM(str(model_path))
+    return _fastsam_model
+
+
+def unload_fastsam():
+    global _fastsam_model
+    _fastsam_model = None
+    gc.collect()
 
 
 def selector_view(page: ft.Page, app: ReColor) -> ft.View:
@@ -74,9 +100,10 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     state = {
         "main_idx": project.layers.index(init_layer),
         "sub_idx": -1,  # -1 = editing main mask, >=0 = sub-mask
-        "tool": "brush",  # brush | eraser | radial | linear | color
+        "tool": "brush",  # brush | radial | linear | color | ai
         "brush_sz": 28.0,
         "feather": 0.3,
+        "brush_mode": "paint",  # "paint" | "erase"
         # Radial settings
         "rad_cx": prev_w / 2.0,
         "rad_cy": prev_h / 2.0,
@@ -84,18 +111,23 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         "rad_height": prev_h * 0.35,
         "rad_feather": 0.5,
         "rad_rot": 0.0,
-        # Linear settings (Size removed; controlled by center, feather & rotation)
+        # Linear settings
         "lin_cx": prev_w / 2.0,
         "lin_cy": prev_h / 2.0,
         "lin_feather": 0.5,
-        "lin_deg": 270.0,  # 270 = Sky/Top, 90 = Ground, 180 = Left, 0 = Right
+        "lin_deg": 270.0,
         # Color range
         "col_rgb": None,
         "col_tol": 0.35,
+        # AI Selection
+        "ai_mode": "click",  # "click" | "box"
+        "ai_op": "add",  # "add" | "replace" | "erase"
+        "ai_loading": False,
     }
 
     # Canvas viewport tracking (updated via on_size_change)
     viewport = [360.0, 420.0]
+    ai_box_start = [0.0, 0.0]
 
     # Working mask buffer at preview resolution
     im_buf: np.ndarray = _load_target_buf(
@@ -131,8 +163,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     def render_canvas(fast: bool = False) -> bytes:
         """
         Compose rubylith overlay using either low-res fast buffer or full preview buffer.
-        CRITICAL: The output JPEG is ALWAYS scaled back to (prev_w, prev_h) so that
-        the canvas image and containers NEVER shrink or change size on screen.
+        Always outputs at (prev_w, prev_h) so canvas image and containers NEVER shrink.
         """
         mi = state["main_idx"]
         si = state["sub_idx"]
@@ -172,8 +203,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             tint = ERASE_COLOR if sm.mode == "erase" else PAINT_COLOR
             overlay = create_mask_overlay(overlay, target_buf, color=tint, opacity=0.35)
 
-        # If fast preview was used, fast-upscale back to (prev_w, prev_h) via nearest neighbor (< 0.1ms)
-        # This keeps the image widget's intrinsic size completely constant so canvas never shrinks!
+        # Fast-upscale back to (prev_w, prev_h) so canvas NEVER shrinks
         if fast and (cw != prev_w or ch != prev_h):
             overlay = cv2.resize(
                 overlay, (prev_w, prev_h), interpolation=cv2.INTER_NEAREST
@@ -199,11 +229,27 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             pass
 
     def on_canvas_size(e):
-        viewport[0] = float(e.width or 360)
-        viewport[1] = float(e.height or 420)
+        vw = float(e.width or 360)
+        vh = float(e.height or 420)
+        viewport[0] = vw
+        viewport[1] = vh
+
+        # Position Layer Panel anchored to the image bounds (not in black bars)
+        scale = min(vw / prev_w, vh / prev_h)
+        rw, rh = prev_w * scale, prev_h * scale
+        ox = max(0.0, (vw - rw) / 2.0)
+        oy = max(0.0, (vh - rh) / 2.0)
+
+        mask_panel.right = max(0, int(round(ox)))
+        mask_panel.top = max(0, int(round(oy)))
+        mask_panel.bottom = max(0, int(round(oy)))
+        try:
+            mask_panel.update()
+        except Exception:
+            pass
 
     # ============================================================
-    # Mask Generators (Radial, Linear, Color)
+    # Mask Generators (Radial, Linear, Color, AI)
     # ============================================================
     def apply_radial(fast: bool = False):
         fth = float(np.clip(state["rad_feather"], 0.01, 0.99))
@@ -308,15 +354,73 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         )
         refresh_canvas(fast=False)
 
+    # --- AI Segmentation execution ---
+    def run_ai_point(ix: float, iy: float):
+        model = get_fastsam_model()
+        if model is None:
+            try:
+                model = load_fastsam()
+            except Exception as ex:
+                show_alert("AI Model Error", f"Could not load FastSAM model: {ex}")
+                return
+
+        rgb_img = prev_arr[..., :3]
+        try:
+            results = model.predict(
+                source=rgb_img,
+                points=[[int(round(ix)), int(round(iy))]],
+                labels=[1],
+                device="cpu",
+                retina_masks=True,
+                verbose=False,
+            )
+            _apply_ai_results(results)
+        except Exception as ex:
+            show_alert("AI Error", f"Inference failed: {ex}")
+
+    def _apply_ai_results(results):
+        page.overlay.clear()
+        page.update()
+
+        if not results or len(results) == 0:
+            return
+        res = results[0]
+        if res.masks is None or len(res.masks.data) == 0:
+            show_alert(
+                "AI Select",
+                "Could not isolate an object at that location. Try clicking another spot!",
+            )
+            return
+
+        mask_bool = res.masks.data[0].cpu().numpy().astype(bool)
+        mask_f = mask_bool.astype(np.float32)
+        if mask_f.shape[:2] != (prev_h, prev_w):
+            mask_f = cv2.resize(
+                mask_f, (prev_w, prev_h), interpolation=cv2.INTER_NEAREST
+            )
+
+        op = state.get("ai_op", "add")
+        if op == "replace":
+            np.copyto(im_buf, mask_f)
+        elif op == "erase":
+            im_buf[mask_f > 0.5] = 0.0
+        else:  # "add"
+            im_buf[:] = np.maximum(im_buf, mask_f)
+
+        cv2.resize(
+            im_buf, (fast_w, fast_h), dst=fast_im_buf, interpolation=cv2.INTER_LINEAR
+        )
+        refresh_canvas(fast=False)
+
     # --- Touch / Drag handlers ---
     def on_pan_start(e: ft.DragStartEvent):
         tool = state["tool"]
         ix, iy = to_img(e.local_position.x, e.local_position.y)
 
-        if tool in ("brush", "eraser"):
+        if tool == "brush":
             stroke_pts.clear()
             stroke_pts.append((ix, iy))
-            color = 0.0 if tool == "eraser" else 1.0
+            color = 0.0 if state["brush_mode"] == "erase" else 1.0
             r = max(1, int(round(state["brush_sz"] / 2.0)))
             cv2.circle(
                 im_buf, (int(round(ix)), int(round(iy))), r, color, -1, cv2.LINE_AA
@@ -343,12 +447,16 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             state["lin_cy"] = iy
             apply_linear(fast=True)
 
+        elif tool == "ai" and state["ai_mode"] == "box":
+            ai_box_start[0] = ix
+            ai_box_start[1] = iy
+
     def on_pan_update(e: ft.DragUpdateEvent):
         tool = state["tool"]
         ix, iy = to_img(e.local_position.x, e.local_position.y)
 
-        if tool in ("brush", "eraser"):
-            color = 0.0 if tool == "eraser" else 1.0
+        if tool == "brush":
+            color = 0.0 if state["brush_mode"] == "erase" else 1.0
             r = max(1, int(round(state["brush_sz"] / 2.0)))
             thick = max(1, int(round(state["brush_sz"])))
 
@@ -384,7 +492,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             stroke_pts.append((ix, iy))
 
             now = time.perf_counter()
-            if now - last_refresh_time[0] >= 0.033:  # 30 FPS limit during active drag
+            if now - last_refresh_time[0] >= 0.033:  # 30 FPS limit during drag
                 last_refresh_time[0] = now
                 refresh_canvas(fast=True)
 
@@ -406,7 +514,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
 
     def on_pan_end(e: ft.DragEndEvent):
         tool = state["tool"]
-        if tool in ("brush", "eraser"):
+        if tool == "brush":
             if state["feather"] > 0.05 and stroke_pts:
                 _apply_stroke_feather(
                     im_buf,
@@ -441,16 +549,20 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             rebuild_tool_options()
 
         elif tool == "radial":
-            # Tap to add/position radial mask
             state["rad_cx"] = ix
             state["rad_cy"] = iy
             apply_radial(fast=False)
 
         elif tool == "linear":
-            # Tap to add/position linear mask
             state["lin_cx"] = ix
             state["lin_cy"] = iy
             apply_linear(fast=False)
+
+        elif tool == "ai" and state["ai_mode"] == "click":
+            loading_indicator = ft.ProgressBar()
+            page.overlay.append(loading_indicator)
+            page.update()
+            run_ai_point(ix, iy)
 
     gesture_canvas = ft.GestureDetector(
         content=ft.Container(
@@ -544,6 +656,9 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
 
     def on_export_mask_image(li: int):
         page.pop_dialog()
+        # Save current working buffer first so live mask is included
+        save_buf()
+
         layer = project.layers[li]
         eff_mask = layer.mask.compute_effective(project.image_array.shape[:2])
         bw = (np.clip(eff_mask, 0.0, 1.0) * 255.0).astype(np.uint8)
@@ -643,7 +758,15 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     def on_rename_layer(li: int):
         page.pop_dialog()
         layer = project.layers[li]
-        tf = ft.TextField(value=layer.name, label="Layer Name", autofocus=True)
+        tf = ft.TextField(
+            value=layer.name,
+            label="Layer Name",
+            autofocus=True,
+            border=ft.OutlineInputBorder(
+                border_radius=ft.BorderRadius.all(10),
+                side=ft.BorderSide(1, ft.Colors.WHITE_24),
+            ),
+        )
 
         def do_rename(ev):
             new_name = tf.value.strip()
@@ -700,6 +823,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         refresh_canvas(fast=False)
 
     def show_parent_options(li: int):
+        save_buf()
         layer = project.layers[li]
 
         def mk_opt(icon, title, on_click, color=ft.Colors.WHITE):
@@ -817,6 +941,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         switch_to(mi, -1)
 
     def show_child_options(li: int, si: int):
+        save_buf()
         layer = project.layers[li]
         if si >= len(layer.mask.sub_masks):
             return
@@ -967,7 +1092,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         page.show_dialog(sheet)
 
     # ============================================================
-    # Mask-list panel (overlaid right side)
+    # Mask-list panel (anchored relative to image bounds)
     # ============================================================
     mask_list_col = ft.Column(spacing=5, scroll=ft.ScrollMode.AUTO)
 
@@ -1150,7 +1275,6 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                                 overflow=ft.TextOverflow.ELLIPSIS,
                                 expand=True,
                             ),
-                            # Up / Down quick reorder buttons
                             ft.Column(
                                 [
                                     ft.Container(
@@ -1222,7 +1346,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         bottom=0,
         width=88,
         bgcolor=ft.Colors.with_opacity(0.88, "#0D1120"),
-        border_radius=ft.BorderRadius.only(top_left=12, bottom_left=12),
+        border_radius=ft.BorderRadius.all(10),
         padding=ft.Padding.symmetric(horizontal=4, vertical=4),
         visible=panel_visible[0],
     )
@@ -1247,7 +1371,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     )
 
     # ============================================================
-    # Tool Options Container (Height adjusted to 144px for full visibility)
+    # Tool Options Container (Height adjusted to 144px)
     # ============================================================
     tool_options_container = ft.Container(
         bgcolor="#111521",
@@ -1258,7 +1382,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     def rebuild_tool_options():
         tool = state["tool"]
 
-        if tool in ("brush", "eraser"):
+        if tool == "brush":
 
             def on_sz(e):
                 state["brush_sz"] = float(e.control.value)
@@ -1266,24 +1390,87 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             def on_fth(e):
                 state["feather"] = float(e.control.value)
 
+            def set_mode(m: str):
+                state["brush_mode"] = m
+                rebuild_tool_options()
+
+            is_paint = state["brush_mode"] == "paint"
+
             tool_options_container.content = ft.Column(
                 [
                     ft.Row(
                         [
                             ft.Icon(
-                                (
-                                    ft.Icons.BRUSH
-                                    if tool == "brush"
-                                    else ft.Icons.AUTO_FIX_NORMAL
-                                ),
+                                ft.Icons.BRUSH,
                                 size=14,
                                 color=ft.Colors.ORANGE_ACCENT_400,
                             ),
                             ft.Text(
-                                f"{tool.title()} Settings",
+                                "Brush Tool",
                                 size=11,
                                 color=ft.Colors.WHITE,
                                 weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Container(expand=True),
+                            ft.Container(
+                                content=ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.Icons.BRUSH,
+                                            size=12,
+                                            color=(
+                                                ft.Colors.WHITE
+                                                if is_paint
+                                                else ft.Colors.WHITE_70
+                                            ),
+                                        ),
+                                        ft.Text(
+                                            "Paint",
+                                            size=10,
+                                            color=(
+                                                ft.Colors.WHITE
+                                                if is_paint
+                                                else ft.Colors.WHITE_70
+                                            ),
+                                        ),
+                                    ],
+                                    spacing=3,
+                                ),
+                                padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+                                bgcolor=ft.Colors.GREEN_700 if is_paint else "#1A2234",
+                                border_radius=ft.BorderRadius.all(6),
+                                on_click=lambda ev: set_mode("paint"),
+                            ),
+                            ft.Container(
+                                content=ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.Icons.AUTO_FIX_NORMAL,
+                                            size=12,
+                                            color=(
+                                                ft.Colors.WHITE
+                                                if not is_paint
+                                                else ft.Colors.WHITE_70
+                                            ),
+                                        ),
+                                        ft.Text(
+                                            "Erase",
+                                            size=10,
+                                            color=(
+                                                ft.Colors.WHITE
+                                                if not is_paint
+                                                else ft.Colors.WHITE_70
+                                            ),
+                                        ),
+                                    ],
+                                    spacing=3,
+                                ),
+                                padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+                                bgcolor=(
+                                    ft.Colors.RED_700 if not is_paint else "#1A2234"
+                                ),
+                                border_radius=ft.BorderRadius.all(6),
+                                on_click=lambda ev: set_mode("erase"),
                             ),
                         ],
                         spacing=6,
@@ -1325,7 +1512,6 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             )
 
         elif tool == "radial":
-            # Radial: Width, Height, Feather, Rotation
             rot_val_text = ft.Text(
                 f"{int(round(state['rad_rot']))}°",
                 size=10,
@@ -1465,7 +1651,6 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             )
 
         elif tool == "linear":
-            # Linear: Size removed! Controlled by center, Feather & Rotation
             deg_val_text = ft.Text(
                 f"{int(round(state['lin_deg']))}°",
                 size=10,
@@ -1543,10 +1728,10 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                                 "• Tap/drag to place", size=9, color=ft.Colors.WHITE_54
                             ),
                             ft.Container(expand=True),
-                            mk_preset("0", 0.0),
-                            mk_preset("90", 90.0),
-                            mk_preset("180", 180.0),
-                            mk_preset("270", 270.0),
+                            mk_preset("Bottom", 270.0),
+                            mk_preset("Top", 90.0),
+                            mk_preset("Right", 180.0),
+                            mk_preset("Left", 0.0),
                             deg_val_text,
                         ],
                         spacing=3,
@@ -1590,7 +1775,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             )
 
         elif tool == "color":
-            # Color Tool with Color Picker + Swatches + Hue scrub
+
             def on_tol(e):
                 state["col_tol"] = float(e.control.value)
                 if state["col_rgb"]:
@@ -1644,7 +1829,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                     for name, c in PRESET_COLORS
                 ],
                 spacing=5,
-                scroll=ft.ScrollMode.HIDDEN,
+                scroll=ft.ScrollMode.AUTO,
             )
 
             tool_options_container.content = ft.Column(
@@ -1693,22 +1878,220 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 spacing=2,
             )
 
+        elif tool == "ai":
+            is_loaded = get_fastsam_model() is not None
+
+            async def do_load(e):
+                state["ai_loading"] = True
+                rebuild_tool_options()
+                try:
+                    load_fastsam()
+                except Exception as ex:
+                    show_alert("FastSAM Load Failed", str(ex))
+                state["ai_loading"] = False
+                rebuild_tool_options()
+
+            def do_unload(e):
+                unload_fastsam()
+                rebuild_tool_options()
+
+            def set_ai_mode(m):
+                state["ai_mode"] = m
+                rebuild_tool_options()
+
+            def set_ai_op(op):
+                state["ai_op"] = op
+                rebuild_tool_options()
+
+            if state["ai_loading"]:
+                status_widget = ft.Row(
+                    [
+                        ft.ProgressRing(
+                            width=16, height=16, color=ft.Colors.ORANGE_ACCENT_400
+                        ),
+                        ft.Text(
+                            "Loading FastSAM model into RAM...",
+                            size=10,
+                            color=ft.Colors.ORANGE_ACCENT_200,
+                        ),
+                    ],
+                    spacing=6,
+                )
+            elif is_loaded:
+                status_widget = ft.Row(
+                    [
+                        ft.Icon(
+                            ft.Icons.CHECK_CIRCLE,
+                            size=14,
+                            color=ft.Colors.GREEN_ACCENT_400,
+                        ),
+                        ft.Text(
+                            "FastSAM Loaded (CPU)",
+                            size=10,
+                            color=ft.Colors.GREEN_ACCENT_400,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                        ft.Container(expand=True),
+                        ft.Button(
+                            content=ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.Icons.DELETE_SWEEP,
+                                        size=13,
+                                        color=ft.Colors.RED_300,
+                                    ),
+                                    ft.Text(
+                                        "Unload RAM", size=10, color=ft.Colors.RED_300
+                                    ),
+                                ],
+                                spacing=3,
+                            ),
+                            bgcolor="#261822",
+                            height=26,
+                            on_click=do_unload,
+                        ),
+                    ],
+                    spacing=6,
+                )
+            else:
+                status_widget = ft.Row(
+                    [
+                        ft.Icon(
+                            ft.Icons.INFO_OUTLINE, size=14, color=ft.Colors.WHITE_54
+                        ),
+                        ft.Text(
+                            "FastSAM not in RAM (~120MB)",
+                            size=10,
+                            color=ft.Colors.WHITE_54,
+                        ),
+                        ft.Container(expand=True),
+                        ft.Button(
+                            content=ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.Icons.DOWNLOAD,
+                                        size=13,
+                                        color=ft.Colors.ORANGE_ACCENT_400,
+                                    ),
+                                    ft.Text(
+                                        "Load FastSAM",
+                                        size=10,
+                                        color=ft.Colors.ORANGE_ACCENT_400,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                ],
+                                spacing=3,
+                            ),
+                            bgcolor="#261E14",
+                            height=26,
+                            on_click=do_load,
+                        ),
+                    ],
+                    spacing=6,
+                )
+
+            is_point = state["ai_mode"] == "click"
+            cur_op = state.get("ai_op", "add")
+
+            ctrl_row = ft.Row(
+                [
+                    ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Icon(ft.Icons.TOUCH_APP, size=12),
+                                ft.Text("Point", size=9),
+                            ],
+                            spacing=2,
+                        ),
+                        padding=ft.Padding.symmetric(horizontal=6, vertical=3),
+                        bgcolor=ft.Colors.ORANGE_ACCENT_700 if is_point else "#1A2234",
+                        border_radius=ft.BorderRadius.all(6),
+                        on_click=lambda ev: set_ai_mode("click"),
+                    ),
+                    ft.Container(width=4),
+                    ft.Container(
+                        content=ft.Text("Add", size=9),
+                        padding=ft.Padding.symmetric(horizontal=6, vertical=3),
+                        bgcolor=ft.Colors.GREEN_700 if cur_op == "add" else "#1A2234",
+                        border_radius=ft.BorderRadius.all(6),
+                        on_click=lambda ev: set_ai_op("add"),
+                    ),
+                    ft.Container(
+                        content=ft.Text("Replace", size=9),
+                        padding=ft.Padding.symmetric(horizontal=6, vertical=3),
+                        bgcolor=(
+                            ft.Colors.ORANGE_ACCENT_700
+                            if cur_op == "replace"
+                            else "#1A2234"
+                        ),
+                        border_radius=ft.BorderRadius.all(6),
+                        on_click=lambda ev: set_ai_op("replace"),
+                    ),
+                    ft.Container(
+                        content=ft.Text("Erase", size=9),
+                        padding=ft.Padding.symmetric(horizontal=6, vertical=3),
+                        bgcolor=ft.Colors.RED_700 if cur_op == "erase" else "#1A2234",
+                        border_radius=ft.BorderRadius.all(6),
+                        on_click=lambda ev: set_ai_op("erase"),
+                    ),
+                ],
+                spacing=4,
+            )
+
+            hint = (
+                "Tap any subject to isolate"
+                if is_point
+                else "Drag box around object to segment"
+            )
+
+            tool_options_container.content = ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Icon(
+                                ft.Icons.AUTO_AWESOME,
+                                size=13,
+                                color=ft.Colors.ORANGE_ACCENT_400,
+                            ),
+                            ft.Text(
+                                "AI Selection (FastSAM)",
+                                size=11,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.WHITE,
+                            ),
+                            ft.Text(
+                                f"• {hint}",
+                                size=9,
+                                color=ft.Colors.WHITE_54,
+                                expand=True,
+                            ),
+                        ],
+                        spacing=6,
+                    ),
+                    status_widget,
+                    ctrl_row,
+                ],
+                spacing=3,
+            )
+
         try:
             tool_options_container.update()
         except Exception:
             pass
 
     # ============================================================
-    # Tool bar (Bottom)
+    # Tool bar (Bottom - Horizontally Scrollable)
     # ============================================================
     tool_btn_map: dict[str, ft.Container] = {}
 
     def set_tool(tool: str):
         if tool != state["tool"]:
-            # Switching tools cleans up the mask buffer as requested
-            im_buf.fill(0.0)
-            fast_im_buf.fill(0.0)
-            stroke_pts.clear()
+            # If switching TO brush: DO NOT CLEAR! Let user edit/refine current mask!
+            # If switching between generator tools: clean up mask buffer so user taps to add mask
+            if tool != "brush" and state["tool"] != "brush":
+                im_buf.fill(0.0)
+                fast_im_buf.fill(0.0)
+                stroke_pts.clear()
             state["tool"] = tool
             refresh_canvas(fast=False)
         else:
@@ -1722,28 +2105,28 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 btn.update()
             except Exception:
                 pass
-        # Do NOT auto-apply: user taps or drags canvas to add mask
+
         rebuild_tool_options()
 
     TOOLS = [
         ("brush", ft.Icons.BRUSH, "Brush"),
-        ("eraser", ft.Icons.AUTO_FIX_NORMAL, "Erase"),
         ("radial", ft.Icons.RADIO_BUTTON_CHECKED, "Radial"),
         ("linear", ft.Icons.GRADIENT, "Linear"),
         ("color", ft.Icons.COLORIZE, "Color"),
+        ("ai", ft.Icons.AUTO_AWESOME, "AI Select"),
     ]
 
     for t_key, t_icon, t_tip in TOOLS:
         tool_btn_map[t_key] = ft.Container(
             content=ft.Column(
                 [
-                    ft.Icon(t_icon, size=20, color=ft.Colors.WHITE),
+                    ft.Icon(t_icon, size=18, color=ft.Colors.WHITE),
                     ft.Text(t_tip, size=9, color=ft.Colors.WHITE_70),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=2,
             ),
-            padding=ft.Padding.symmetric(horizontal=14, vertical=8),
+            padding=ft.Padding.symmetric(horizontal=12, vertical=6),
             bgcolor=(
                 ft.Colors.ORANGE_ACCENT_700
                 if t_key == state["tool"]
@@ -1756,14 +2139,16 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     tool_bar = ft.Container(
         content=ft.Row(
             controls=list(tool_btn_map.values()),
-            alignment=ft.MainAxisAlignment.SPACE_AROUND,
+            scroll=ft.ScrollMode.AUTO,
+            alignment=ft.MainAxisAlignment.START,
+            spacing=4,
         ),
         bgcolor="#161B26",
-        padding=ft.Padding.symmetric(horizontal=8, vertical=6),
+        padding=ft.Padding.symmetric(horizontal=6, vertical=5),
     )
 
     # ============================================================
-    # Done → save & return
+    # Done / Back navigation
     # ============================================================
     async def save_and_done(e):
         save_buf()
@@ -1772,6 +2157,12 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         idx = project.layers.index(layer)
         project.invalidate_cache(idx)
         project.selected_layer = layer
+        app.active_mask_layer = None
+        project.save()
+        await page.push_route("/editor")
+
+    async def go_back(e):
+        save_buf()
         app.active_mask_layer = None
         project.save()
         await page.push_route("/editor")
@@ -1801,6 +2192,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         bgcolor="#0B0F17",
         appbar=ft.AppBar(
             bgcolor="#111521",
+            leading=ft.IconButton(ft.Icons.ARROW_BACK, on_click=go_back),
             title=appbar_title,
             actions=[
                 panel_toggle_btn,
@@ -1899,5 +2291,6 @@ def get_mask_icon(mask_type: str):
         "radial": ft.Icons.RADIO_BUTTON_CHECKED,
         "linear": ft.Icons.GRADIENT,
         "color": ft.Icons.COLORIZE,
+        "ai": ft.Icons.AUTO_AWESOME,
         "luminance": ft.Icons.BRIGHTNESS_6,
     }.get(mask_type, ft.Icons.LAYERS)

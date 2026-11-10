@@ -19,38 +19,55 @@ def create_view(page: ft.Page, app: ReColor) -> ft.View:
         max_length=25,
         filled=True,
         bgcolor="#141824",
-        border_radius=ft.BorderRadius.all(10),
-        border={
-            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
-                border_radius=ft.BorderRadius.all(10),
-                side=ft.BorderSide(1.5, ft.Colors.ORANGE_ACCENT_400),
-            )
-        },
+        border=ft.OutlineInputBorder(
+            border_radius=ft.BorderRadius.all(12),
+            side=ft.BorderSide(1, ft.Colors.WHITE_24),
+        ),
         suffix=".rclr",
     )
 
     image_preview = ft.Image(
         src=None,
-        width=200,
-        height=200,
+        width=220,
+        height=220,
         fit=ft.BoxFit.COVER,
-        border_radius=ft.BorderRadius.all(12),
+        border_radius=ft.BorderRadius.all(14),
         visible=False,
     )
 
-    status_text = ft.Text(
-        "No image selected yet",
-        size=12,
-        color=ft.Colors.WHITE_54,
+    status_icon = ft.Icon(ft.Icons.IMAGE_OUTLINED, size=32, color=ft.Colors.WHITE_38)
+    status_title = ft.Text("No image selected", size=13, weight=ft.FontWeight.W_600, color=ft.Colors.WHITE_70)
+    status_subtitle = ft.Text("Pick an image from your device or use sample", size=11, color=ft.Colors.WHITE_38)
+
+    preview_card = ft.Container(
+        content=ft.Column(
+            controls=[
+                image_preview,
+                status_icon,
+                status_title,
+                status_subtitle,
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=6,
+        ),
+        alignment=ft.Alignment.CENTER,
+        padding=ft.Padding.all(16),
+        bgcolor="#121622",
+        border_radius=ft.BorderRadius.all(16),
+        border=ft.Border.all(1, ft.Colors.WHITE_12),
+        height=280,
     )
 
     create_btn = ft.Button(
-        content="Start Color Grading",
-        icon=ft.Icons.ARROW_FORWARD,
+        content=ft.Row([
+            ft.Text("Start Color Grading", size=15, weight=ft.FontWeight.BOLD),
+            ft.Icon(ft.Icons.ARROW_FORWARD, size=18),
+        ], alignment=ft.MainAxisAlignment.CENTER),
         bgcolor=ft.Colors.ORANGE_ACCENT_700,
         color=ft.Colors.WHITE,
         disabled=True,
-        height=48,
+        height=50,
     )
 
     def set_chosen_image(path: str):
@@ -58,20 +75,24 @@ def create_view(page: ft.Page, app: ReColor) -> ft.View:
         selected_image_path = path
         try:
             arr = load_rgba(path)
-            # Small preview
-            image_preview.src = arr_to_jpeg_bytes(arr, quality=70)
+            h, w = arr.shape[:2]
+            image_preview.src = arr_to_jpeg_bytes(arr, quality=75)
             image_preview.visible = True
-            status_text.value = f"Selected: {Path(path).name} ({arr.shape[1]}x{arr.shape[0]})"
-            status_text.color = ft.Colors.GREEN_ACCENT_400
+            status_icon.visible = False
+            status_title.value = Path(path).name
+            status_title.color = ft.Colors.WHITE
+            status_subtitle.value = f"Resolution: {w} × {h} px"
+            status_subtitle.color = ft.Colors.GREEN_ACCENT_400
             create_btn.disabled = False
+            preview_card.border = ft.Border.all(1.5, ft.Colors.ORANGE_ACCENT_400)
         except Exception as ex:
-            status_text.value = f"Failed to load image: {ex}"
-            status_text.color = ft.Colors.RED_ACCENT_400
+            status_title.value = "Failed to load image"
+            status_title.color = ft.Colors.RED_ACCENT_400
+            status_subtitle.value = str(ex)
             create_btn.disabled = True
 
         try:
-            image_preview.update()
-            status_text.update()
+            preview_card.update()
             create_btn.update()
         except Exception:
             pass
@@ -91,10 +112,10 @@ def create_view(page: ft.Page, app: ReColor) -> ft.View:
         if Path(default_sample_path).exists():
             set_chosen_image(default_sample_path)
         else:
-            status_text.value = "Sample default.jpg not found."
-            status_text.color = ft.Colors.RED_ACCENT_400
+            status_title.value = "Sample portrait not found"
+            status_title.color = ft.Colors.RED_ACCENT_400
             try:
-                status_text.update()
+                preview_card.update()
             except Exception:
                 pass
 
@@ -103,7 +124,6 @@ def create_view(page: ft.Page, app: ReColor) -> ft.View:
         if not selected_image_path:
             return
 
-        # Create project in manager
         app.projects_manager.create_project(proj_name, selected_image_path)
         await page.push_route("/editor")
 
@@ -123,44 +143,42 @@ def create_view(page: ft.Page, app: ReColor) -> ft.View:
         controls=[
             ft.SafeArea(
                 content=ft.Container(
-                    padding=ft.Padding.all(20),
+                    padding=ft.Padding.symmetric(horizontal=20, vertical=16),
                     content=ft.Column(
                         controls=[
-                            ft.Text("Project Details", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                            ft.Text("Project Name", size=13, weight=ft.FontWeight.W_600, color=ft.Colors.WHITE_70),
                             name_field,
-                            ft.Container(height=10),
-                            ft.Text("Choose Image Source", size=14, weight=ft.FontWeight.W_600, color=ft.Colors.WHITE_70),
+                            ft.Container(height=6),
+                            ft.Text("Image Source", size=13, weight=ft.FontWeight.W_600, color=ft.Colors.WHITE_70),
                             ft.Row(
                                 controls=[
-                                    ft.OutlinedButton(
-                                        "Select from Device",
-                                        icon=ft.Icons.PHOTO_LIBRARY,
+                                    ft.Button(
+                                        content=ft.Row([
+                                            ft.Icon(ft.Icons.PHOTO_LIBRARY, size=18, color=ft.Colors.ORANGE_ACCENT_400),
+                                            ft.Text("Choose Photo", size=12),
+                                        ], alignment=ft.MainAxisAlignment.CENTER, spacing=6),
+                                        bgcolor="#182032",
+                                        color=ft.Colors.WHITE,
                                         on_click=on_pick_file,
                                         expand=True,
-                                        height=44,
+                                        height=46,
                                     ),
-                                    ft.OutlinedButton(
-                                        "Sample Portrait",
-                                        icon=ft.Icons.AUTO_AWESOME,
+                                    ft.Button(
+                                        content=ft.Row([
+                                            ft.Icon(ft.Icons.AUTO_AWESOME, size=18, color=ft.Colors.ORANGE_ACCENT_400),
+                                            ft.Text("Sample Portrait", size=12),
+                                        ], alignment=ft.MainAxisAlignment.CENTER, spacing=6),
+                                        bgcolor="#182032",
+                                        color=ft.Colors.WHITE,
                                         on_click=on_use_sample,
                                         expand=True,
-                                        height=44,
+                                        height=46,
                                     ),
                                 ],
                                 spacing=10,
                             ),
-                            ft.Container(height=10),
-                            ft.Container(
-                                content=ft.Column(
-                                    controls=[
-                                        image_preview,
-                                        status_text,
-                                    ],
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                ),
-                                alignment=ft.Alignment.CENTER,
-                                padding=ft.Padding.symmetric(vertical=15),
-                            ),
+                            ft.Container(height=6),
+                            preview_card,
                             ft.Container(expand=True),
                             create_btn,
                         ],
