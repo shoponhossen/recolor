@@ -39,7 +39,7 @@ def load_fastsam():
     global _fastsam_model
     model_path = Path(r"src/assets/models/FastSAM-s.pt").resolve()
     if not model_path.exists():
-        model_path = Path("FastSAM-x.pt").resolve()
+        model_path = Path("FastSAM-s.pt").resolve()
     from ultralytics import FastSAM
 
     _fastsam_model = FastSAM(str(model_path))

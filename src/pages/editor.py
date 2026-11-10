@@ -75,7 +75,9 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
     # === Layer Overlay Dropdown (bottom-right of canvas) ===
 
     layer_chip_icon = ft.Icon(ft.Icons.PUBLIC, size=14, color=ft.Colors.WHITE)
-    layer_chip_text = ft.Text("", size=11, color=ft.Colors.WHITE, weight=ft.FontWeight.W_600)
+    layer_chip_text = ft.Text(
+        "", size=11, color=ft.Colors.WHITE, weight=ft.FontWeight.W_600
+    )
     layer_chip_arrow = ft.Icon(ft.Icons.EXPAND_LESS, size=14, color=ft.Colors.WHITE_70)
 
     layer_dropdown_col = ft.Column(spacing=4, scroll=ft.ScrollMode.AUTO)
@@ -155,29 +157,74 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
             row = ft.Container(
                 content=ft.Row(
                     controls=[
-                        ft.Icon(get_mask_icon(layer.mask_type), size=14,
-                                color=ft.Colors.ORANGE_ACCENT_400 if is_sel else ft.Colors.WHITE_54),
-                        ft.Column([
-                            ft.Text(layer.name, size=12,
-                                    color=ft.Colors.WHITE if is_sel else ft.Colors.WHITE_70,
-                                    weight=ft.FontWeight.BOLD if is_sel else ft.FontWeight.NORMAL),
-                            ft.Text(f"{sub_count} sub-mask{'s' if sub_count != 1 else ''}" if sub_count else "no sub-masks",
-                                    size=10, color=ft.Colors.WHITE_38),
-                        ], spacing=0, expand=True),
+                        ft.Icon(
+                            get_mask_icon(layer.mask_type),
+                            size=14,
+                            color=(
+                                ft.Colors.ORANGE_ACCENT_400
+                                if is_sel
+                                else ft.Colors.WHITE_54
+                            ),
+                        ),
+                        ft.Column(
+                            [
+                                ft.Text(
+                                    layer.name,
+                                    size=12,
+                                    color=(
+                                        ft.Colors.WHITE
+                                        if is_sel
+                                        else ft.Colors.WHITE_70
+                                    ),
+                                    weight=(
+                                        ft.FontWeight.BOLD
+                                        if is_sel
+                                        else ft.FontWeight.NORMAL
+                                    ),
+                                ),
+                                ft.Text(
+                                    (
+                                        f"{sub_count} sub-mask{'s' if sub_count != 1 else ''}"
+                                        if sub_count
+                                        else "no sub-masks"
+                                    ),
+                                    size=10,
+                                    color=ft.Colors.WHITE_38,
+                                ),
+                            ],
+                            spacing=0,
+                            expand=True,
+                        ),
                         ft.IconButton(
                             icon=ft.Icons.EDIT,
                             icon_size=14,
-                            icon_color=ft.Colors.ORANGE_ACCENT_400 if is_sel else ft.Colors.WHITE_38,
+                            icon_color=(
+                                ft.Colors.ORANGE_ACCENT_400
+                                if is_sel
+                                else ft.Colors.WHITE_38
+                            ),
                             tooltip="Edit Mask",
                             on_click=on_edit_mask,
-                            width=28, height=28, padding=0,
+                            width=28,
+                            height=28,
+                            padding=0,
                         ),
                         ft.IconButton(
-                            icon=ft.Icons.VISIBILITY if layer.visible else ft.Icons.VISIBILITY_OFF,
+                            icon=(
+                                ft.Icons.VISIBILITY
+                                if layer.visible
+                                else ft.Icons.VISIBILITY_OFF
+                            ),
                             icon_size=14,
-                            icon_color=ft.Colors.WHITE_70 if layer.visible else ft.Colors.WHITE_24,
+                            icon_color=(
+                                ft.Colors.WHITE_70
+                                if layer.visible
+                                else ft.Colors.WHITE_24
+                            ),
                             on_click=lambda ev, l=layer: toggle_vis(l),
-                            width=28, height=28, padding=0,
+                            width=28,
+                            height=28,
+                            padding=0,
                         ),
                     ],
                     spacing=4,
@@ -214,14 +261,18 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
     single_slider = CenterSlider(min=-100.0, max=100.0, value=0.0)
 
     slider_adj_name_text = ft.Text("Exposure", size=12, color=ft.Colors.WHITE_70)
-    slider_val_text = ft.Text("0", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
+    slider_val_text = ft.Text(
+        "0", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE
+    )
 
     slider_reset_btn = ft.IconButton(
         icon=ft.Icons.REFRESH,
         icon_size=16,
         icon_color=ft.Colors.WHITE_38,
         tooltip="Reset to 0",
-        width=30, height=30, padding=0,
+        width=30,
+        height=30,
+        padding=0,
     )
 
     def sync_slider_to_active():
@@ -319,7 +370,9 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
                             size=10,
                             color=ft.Colors.WHITE,
                             text_align=ft.TextAlign.CENTER,
-                            weight=ft.FontWeight.W_600 if is_sel else ft.FontWeight.NORMAL,
+                            weight=(
+                                ft.FontWeight.W_600 if is_sel else ft.FontWeight.NORMAL
+                            ),
                         ),
                         ft.Text(
                             f"+{iv}" if iv > 0 else str(iv),
@@ -338,7 +391,11 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
                 bgcolor="#1E2742" if is_sel else "#141824",
                 border=ft.Border.all(
                     1.5 if is_sel else 1,
-                    ft.Colors.ORANGE_ACCENT_400 if is_sel else ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
+                    (
+                        ft.Colors.ORANGE_ACCENT_400
+                        if is_sel
+                        else ft.Colors.with_opacity(0.12, ft.Colors.WHITE)
+                    ),
                 ),
                 border_radius=ft.BorderRadius.all(10),
                 alignment=ft.Alignment.CENTER,
@@ -368,7 +425,9 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
         if adjs:
             active_adj_key = adjs[0].key
         for c, btn in cat_btn_map.items():
-            btn.bgcolor = ft.Colors.ORANGE_ACCENT_700 if c == cat else ft.Colors.TRANSPARENT
+            btn.bgcolor = (
+                ft.Colors.ORANGE_ACCENT_700 if c == cat else ft.Colors.TRANSPARENT
+            )
             try:
                 btn.update()
             except Exception:
@@ -378,9 +437,15 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
 
     for cat in CATEGORIES:
         cat_btn_map[cat] = ft.Container(
-            content=ft.Text(cat, size=13, weight=ft.FontWeight.W_600, color=ft.Colors.WHITE),
+            content=ft.Text(
+                cat, size=13, weight=ft.FontWeight.W_600, color=ft.Colors.WHITE
+            ),
             padding=ft.Padding.symmetric(horizontal=16, vertical=8),
-            bgcolor=ft.Colors.ORANGE_ACCENT_700 if cat == active_category else ft.Colors.TRANSPARENT,
+            bgcolor=(
+                ft.Colors.ORANGE_ACCENT_700
+                if cat == active_category
+                else ft.Colors.TRANSPARENT
+            ),
             border_radius=ft.BorderRadius.all(8),
             on_click=lambda ev, c=cat: switch_category(c),
         )
@@ -389,6 +454,7 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
         content=ft.Row(
             controls=list(cat_btn_map.values()),
             alignment=ft.MainAxisAlignment.SPACE_AROUND,
+            scroll=ft.ScrollMode.HIDDEN,
         ),
         bgcolor="#111521",
         padding=ft.Padding.symmetric(horizontal=12, vertical=4),
@@ -419,6 +485,7 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
     def reset_layer(e):
         if not project.selected_layer:
             return
+
         def confirm(ev):
             page.pop_dialog()
             project.selected_layer.reset_adjustments()
@@ -427,14 +494,19 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
             sync_slider_to_active()
             rebuild_adj_cards()
             refresh_image(dirty=idx)
-        page.show_dialog(ft.AlertDialog(
-            title=ft.Text("Reset Layer?"),
-            content=ft.Text(f"Reset all adjustments on '{project.selected_layer.name}'?"),
-            actions=[
-                ft.TextButton("Cancel", on_click=lambda ev: page.pop_dialog()),
-                ft.TextButton("Reset", on_click=confirm),
-            ],
-        ))
+
+        page.show_dialog(
+            ft.AlertDialog(
+                title=ft.Text("Reset Layer?"),
+                content=ft.Text(
+                    f"Reset all adjustments on '{project.selected_layer.name}'?"
+                ),
+                actions=[
+                    ft.TextButton("Cancel", on_click=lambda ev: page.pop_dialog()),
+                    ft.TextButton("Reset", on_click=confirm),
+                ],
+            )
+        )
 
     def export_image(e):
         async def do_export(fmt):
@@ -442,11 +514,18 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
 
             loading_dlg = ft.AlertDialog(
                 modal=True,
-                content=ft.Row([
-                    ft.ProgressRing(color=ft.Colors.ORANGE_ACCENT_400),
-                    ft.Container(width=10),
-                    ft.Text("Rendering full-res image...", size=13, color=ft.Colors.WHITE),
-                ], alignment=ft.MainAxisAlignment.CENTER),
+                content=ft.Row(
+                    [
+                        ft.ProgressRing(color=ft.Colors.ORANGE_ACCENT_400),
+                        ft.Container(width=10),
+                        ft.Text(
+                            "Rendering full-res image...",
+                            size=13,
+                            color=ft.Colors.WHITE,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
                 bgcolor="#151A27",
             )
             page.show_dialog(loading_dlg)
@@ -455,31 +534,74 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
             try:
                 project.export_full_image(path, quality=95)
                 page.pop_dialog()  # Close loading
-                page.show_dialog(ft.AlertDialog(
-                    title=ft.Text("Export Complete!", size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                    content=ft.Text(f"Saved full resolution graded image to:\n{path}", size=12, color=ft.Colors.WHITE_70),
-                    actions=[ft.Button(content="OK", on_click=lambda ev: page.pop_dialog())],
-                    bgcolor="#151A27",
-                ))
+                page.show_dialog(
+                    ft.AlertDialog(
+                        title=ft.Text(
+                            "Export Complete!",
+                            size=15,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.WHITE,
+                        ),
+                        content=ft.Text(
+                            f"Saved full resolution graded image to:\n{path}",
+                            size=12,
+                            color=ft.Colors.WHITE_70,
+                        ),
+                        actions=[
+                            ft.Button(
+                                content="OK", on_click=lambda ev: page.pop_dialog()
+                            )
+                        ],
+                        bgcolor="#151A27",
+                    )
+                )
             except Exception as ex:
                 page.pop_dialog()
-                page.show_dialog(ft.AlertDialog(
-                    title=ft.Text("Export Failed", size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.RED_ACCENT_400),
-                    content=ft.Text(str(ex), size=12, color=ft.Colors.WHITE_70),
-                    actions=[ft.Button(content="OK", on_click=lambda ev: page.pop_dialog())],
-                    bgcolor="#151A27",
-                ))
+                page.show_dialog(
+                    ft.AlertDialog(
+                        title=ft.Text(
+                            "Export Failed",
+                            size=15,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.RED_ACCENT_400,
+                        ),
+                        content=ft.Text(str(ex), size=12, color=ft.Colors.WHITE_70),
+                        actions=[
+                            ft.Button(
+                                content="OK", on_click=lambda ev: page.pop_dialog()
+                            )
+                        ],
+                        bgcolor="#151A27",
+                    )
+                )
 
-        page.show_dialog(ft.AlertDialog(
-            title=ft.Text("Export Graded Image", size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-            content=ft.Text("Select export format (rendered at original camera resolution):", size=12, color=ft.Colors.WHITE_70),
-            actions=[
-                ft.Button(content="JPEG", on_click=lambda ev: page.run_task(do_export, "jpg")),
-                ft.Button(content="PNG",  on_click=lambda ev: page.run_task(do_export, "png")),
-                ft.TextButton("Cancel", on_click=lambda ev: page.pop_dialog()),
-            ],
-            bgcolor="#151A27",
-        ))
+        page.show_dialog(
+            ft.AlertDialog(
+                title=ft.Text(
+                    "Export Graded Image",
+                    size=15,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.WHITE,
+                ),
+                content=ft.Text(
+                    "Select export format (rendered at original camera resolution):",
+                    size=12,
+                    color=ft.Colors.WHITE_70,
+                ),
+                actions=[
+                    ft.Button(
+                        content="JPEG",
+                        on_click=lambda ev: page.run_task(do_export, "jpg"),
+                    ),
+                    ft.Button(
+                        content="PNG",
+                        on_click=lambda ev: page.run_task(do_export, "png"),
+                    ),
+                    ft.TextButton("Cancel", on_click=lambda ev: page.pop_dialog()),
+                ],
+                bgcolor="#151A27",
+            )
+        )
 
     async def go_mask_studio(e):
         """Switch directly between Editor and Mask Studio (Selector) for the active layer."""
@@ -489,12 +611,25 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
 
     def on_save_project(e):
         project.save()
-        page.show_dialog(ft.AlertDialog(
-            title=ft.Text("Project Saved", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-            content=ft.Text(f"Saved '{project.name}' successfully.", size=12, color=ft.Colors.WHITE_70),
-            actions=[ft.Button(content="OK", on_click=lambda ev: page.pop_dialog())],
-            bgcolor="#151A27",
-        ))
+        page.show_dialog(
+            ft.AlertDialog(
+                title=ft.Text(
+                    "Project Saved",
+                    size=14,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.WHITE,
+                ),
+                content=ft.Text(
+                    f"Saved '{project.name}' successfully.",
+                    size=12,
+                    color=ft.Colors.WHITE_70,
+                ),
+                actions=[
+                    ft.Button(content="OK", on_click=lambda ev: page.pop_dialog())
+                ],
+                bgcolor="#151A27",
+            )
+        )
 
     async def go_back(e):
         project.save()
@@ -514,21 +649,34 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
     # === Slider Row ===
 
     slider_row = ft.Container(
-        content=ft.Column([
-            ft.Row([
-                slider_adj_name_text,
-                ft.Row([
-                    slider_reset_btn,
-                    ft.Container(
-                        content=slider_val_text,
-                        bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
-                        border_radius=ft.BorderRadius.all(10),
-                        padding=ft.Padding.symmetric(horizontal=8, vertical=2),
-                    ),
-                ], spacing=4),
-            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            single_slider,
-        ], spacing=2),
+        content=ft.Column(
+            [
+                ft.Row(
+                    [
+                        slider_adj_name_text,
+                        ft.Row(
+                            [
+                                slider_reset_btn,
+                                ft.Container(
+                                    content=slider_val_text,
+                                    bgcolor=ft.Colors.with_opacity(
+                                        0.12, ft.Colors.WHITE
+                                    ),
+                                    border_radius=ft.BorderRadius.all(10),
+                                    padding=ft.Padding.symmetric(
+                                        horizontal=8, vertical=2
+                                    ),
+                                ),
+                            ],
+                            spacing=4,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                single_slider,
+            ],
+            spacing=2,
+        ),
         padding=ft.Padding.symmetric(horizontal=12, vertical=6),
         bgcolor="#0E121B",
     )
@@ -552,9 +700,17 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
                     icon_color=ft.Colors.ORANGE_ACCENT_400,
                     on_click=go_mask_studio,
                 ),
-                ft.IconButton(ft.Icons.REFRESH, tooltip="Reset Layer", on_click=reset_layer),
-                ft.IconButton(ft.Icons.FILE_DOWNLOAD, tooltip="Export Image", on_click=export_image),
-                ft.IconButton(ft.Icons.SAVE, tooltip="Save Project", on_click=on_save_project),
+                ft.IconButton(
+                    ft.Icons.REFRESH, tooltip="Reset Layer", on_click=reset_layer
+                ),
+                ft.IconButton(
+                    ft.Icons.FILE_DOWNLOAD,
+                    tooltip="Export Image",
+                    on_click=export_image,
+                ),
+                ft.IconButton(
+                    ft.Icons.SAVE, tooltip="Save Project", on_click=on_save_project
+                ),
             ],
         ),
         controls=[
@@ -562,7 +718,9 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
                 content=ft.Column(
                     controls=[
                         # Canvas — takes most vertical space
-                        ft.Container(content=canvas_stack, expand=True, bgcolor="#080B11"),
+                        ft.Container(
+                            content=canvas_stack, expand=True, bgcolor="#080B11"
+                        ),
                         # Category Bar
                         category_bar,
                         # Adjustment Cards (horizontal scroll)
