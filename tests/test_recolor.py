@@ -109,6 +109,14 @@ def test_project_lifecycle():
         l2 = p.add_layer("Radial Focus", "radial")
         l2.values["contrast"] = 30.0
 
+        # Auto-naming M(x) based on non-global mask count (l2 was mask 1)
+        m1 = p.add_layer(mask_type="brush")
+        assert m1.name == "M2"
+        m2 = p.add_layer(mask_type="radial")
+        assert m2.name == "M3"
+        p.remove_layer(m1)
+        p.remove_layer(m2)
+
         # Render preview
         prev = p.render_preview()
         assert prev.shape[:2] == p.preview_image_array.shape[:2]

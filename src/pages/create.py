@@ -20,7 +20,12 @@ def create_view(page: ft.Page, app: ReColor) -> ft.View:
         filled=True,
         bgcolor="#141824",
         border_radius=ft.BorderRadius.all(10),
-        focused_border_color=ft.Colors.ORANGE_ACCENT_400,
+        border={
+            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                border_radius=ft.BorderRadius.all(10),
+                side=ft.BorderSide(1.5, ft.Colors.ORANGE_ACCENT_400),
+            )
+        },
         suffix=".rclr",
     )
 

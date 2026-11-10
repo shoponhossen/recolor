@@ -132,40 +132,26 @@ class Project:
         shape = self.image_array.shape[:2]
         layer_num = len(self.layers) + 1
 
+        mask_count = sum(1 for l in self.layers if l.mask_type != "global") + 1
+
         if mask_type == "global":
             mask = Mask(size=shape)
-            default_name = "Global Adjustments"
-        elif mask_type == "brush":
-            mask = Mask(size=shape).clear()
-            default_name = f"Brush {layer_num}"
-        elif mask_type == "radial":
-            mask = Mask(size=shape)
-            h, w = shape
-            mask.set_radial_gradient(
-                center=(w / 2.0, h / 2.0),
-                radius_x=w * 0.35,
-                radius_y=h * 0.35,
-                feather=0.5,
-            )
-            default_name = f"Radial {layer_num}"
-        elif mask_type == "linear":
-            mask = Mask(size=shape)
-            h, w = shape
-            mask.set_linear_gradient(
-                start_pt=(w / 2.0, 0.0),
-                end_pt=(w / 2.0, h * 0.5),
-            )
-            default_name = f"Linear {layer_num}"
-        elif mask_type == "color":
-            mask = Mask(size=shape)
-            # Default to sampling center pixel
-            h, w = shape
-            sample_rgb = tuple(int(c) for c in self.image_array[h // 2, w // 2][:3])
-            mask.set_color_range(self.image_array, sample_rgb, tolerance=0.3)
-            default_name = f"Color Range {layer_num}"
+            default_name = "Global"
         else:
-            mask = Mask(size=shape)
-            default_name = f"Layer {layer_num}"
+            default_name = f"M{mask_count}"
+            if mask_type == "brush":
+                mask = Mask(size=shape).clear()
+            elif mask_type == "radial":
+                mask = Mask(size=shape).clear()
+            elif mask_type == "linear":
+                mask = Mask(size=shape).clear()
+            elif mask_type == "color":
+                mask = Mask(size=shape)
+                h, w = shape
+                sample_rgb = tuple(int(c) for c in self.image_array[h // 2, w // 2][:3])
+                mask.set_color_range(self.image_array, sample_rgb, tolerance=0.3)
+            else:
+                mask = Mask(size=shape).clear()
 
         new_layer = Layer(
             name=name or default_name,
