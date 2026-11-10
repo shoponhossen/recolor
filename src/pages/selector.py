@@ -1644,7 +1644,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                     for name, c in PRESET_COLORS
                 ],
                 spacing=5,
-                scroll=ft.ScrollMode.AUTO,
+                scroll=ft.ScrollMode.HIDDEN,
             )
 
             tool_options_container.content = ft.Column(

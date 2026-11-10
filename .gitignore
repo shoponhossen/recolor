@@ -25,3 +25,5 @@ build/
 
 # macOS
 .DS_Store
+
+*.pt

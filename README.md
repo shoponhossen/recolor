@@ -109,3 +109,39 @@ flet build apk -v
 ```bash
 flet build ipa -v
 ```
+
+
+fix the positions. the Layer Panel should stay relative to the container who holding the Image/Canvas.
+
+Brush Tool And Erase Tool is different. if coming for other tool then do not clear mask. let user update/adjust others tool mask using brush and erase tool.
+
+or instead remove the Erase tool entirely and put the features in Brush Tool. so Brush tool have 2 modes one for erasing and one for painting.
+
+add:
+a Loading for Download/Save image.
+
+fix:
+Mask export does not work until i save the mask go Editor and then again come to Selector and then export. fix it.
+
+In Editor top navigation bar Add Mask Layer use this button as switching between Editor and Selector.
+
+On Selector Top Navigation Back button it goes to Home/Dashboard fix it. on Selector Navigation Back button go Editor Instead.
+
+improve Create New Project page.
+
+fix deprecate warnings:
+DeprecationWarning: TextField.border_radius property is deprecated since version 1.0.0 and will be removed in version 1.3.0. Use border=OutlineInputBorder(border_radius=...) instead.
+  page.update()
+
+and make the tools scrollable to add more tools.
+
+add new tool:
+ AI Selection
+
+ using FastSAM-s.pt
+
+model file = r"src\assets\models\FastSAM-s.pt"
+
+in AI Selection tool options show Load and Unload the model in memory. this help a lot in performance.
+
+here is example tkinter app.
