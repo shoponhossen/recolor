@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 from backend.backend import (
     Mask,
+    SubMask,
     Layer,
     ADJUSTMENTS_LIST,
     ADJUSTMENTS_MAP,
@@ -167,3 +168,47 @@ def test_views_initialization():
 
     cv = create_view(page, app)
     assert cv.route == "/create"
+
+
+def test_submask_effective():
+    # User's exact test case
+    # Main mask = all 1s
+    main = Mask(data=[
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0],
+    ])
+
+    # Submask 1 = [1, 1, 1], [1, 0.5, 1], [1, 1, 1]
+    sm = main.add_sub_mask(mode="erase")
+    sm.data = np.array([
+        [1.0, 1.0, 1.0],
+        [1.0, 0.5, 1.0],
+        [1.0, 1.0, 1.0],
+    ], dtype=np.float32)
+
+    # Erase mode: final = main * (1 - sub)
+    eff = main.compute_effective((3, 3))
+    expected = np.array([
+        [0.0, 0.0, 0.0],
+        [0.0, 0.5, 0.0],
+        [0.0, 0.0, 0.0],
+    ], dtype=np.float32)
+    assert np.allclose(eff, expected)
+
+    # Paint mode: final = main * sub
+    sm.mode = "paint"
+    eff_paint = main.compute_effective((3, 3))
+    assert np.allclose(eff_paint, sm.data)
+
+
+def test_expanded_mask_generators():
+    m = Mask(size=(100, 100))
+    # Test radial with rotation
+    m.set_radial_gradient(center=(50, 50), radius_x=30, radius_y=15, feather=0.5, rotation=45.0)
+    assert 0.0 <= m.data.min() <= m.data.max() <= 1.0
+
+    # Test linear with angle & feather
+    m.set_linear_gradient(center=(50, 50), size=60, feather=0.5, direction_deg=90.0)
+    assert 0.0 <= m.data.min() <= m.data.max() <= 1.0
+

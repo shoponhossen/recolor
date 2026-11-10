@@ -100,6 +100,7 @@ def create_mask_overlay(
 ) -> np.ndarray:
     """
     Renders a Lightroom-style red rubylith mask overlay on top of an RGBA image array.
+    Optimized for high performance and minimal memory allocations.
     arr: (H, W, 4) uint8
     mask: (H, W) float32 in [0, 1]
     """
@@ -107,14 +108,13 @@ def create_mask_overlay(
     if mask.shape[:2] != (h, w):
         mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_LINEAR)
 
-    m = np.clip(mask[..., None] * opacity, 0.0, 1.0)
-    base = arr.astype(np.float32)
+    if not np.any(mask):
+        return arr.copy()
 
-    tint = np.empty_like(base)
-    tint[..., 0] = color[0]
-    tint[..., 1] = color[1]
-    tint[..., 2] = color[2]
-    tint[..., 3] = base[..., 3]
-
-    blended = base * (1.0 - m) + tint * m
-    return np.clip(blended, 0, 255).astype(np.uint8)
+    out = arr.copy()
+    alpha = (np.clip(mask, 0.0, 1.0) * float(opacity))[..., None]
+    rgb = out[..., :3].astype(np.float32)
+    tint = np.array(color[:3], dtype=np.float32)
+    rgb += (tint - rgb) * alpha
+    out[..., :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return out

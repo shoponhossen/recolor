@@ -45,6 +45,30 @@ class SubMask:
             name=self.name,
         )
 
+    def invert(self):
+        self.data = np.clip(1.0 - self.data, 0.0, 1.0)
+        return self
+
+    def clear(self):
+        self.data.fill(0.0)
+        return self
+
+    def fill(self):
+        self.data.fill(1.0)
+        return self
+
+    def add_brush_stroke(self, points, radius: float = 15.0, erase: bool = False):
+        color = 0.0 if erase else 1.0
+        r = max(1, int(round(radius)))
+        thick = max(1, int(round(radius * 2)))
+        for i in range(len(points) - 1):
+            p1 = (int(round(points[i][0])), int(round(points[i][1])))
+            p2 = (int(round(points[i + 1][0])), int(round(points[i + 1][1])))
+            cv2.line(self.data, p1, p2, color, thick, cv2.LINE_AA)
+        for pt in points:
+            cv2.circle(self.data, (int(round(pt[0])), int(round(pt[1]))), r, color, -1, cv2.LINE_AA)
+        return self
+
 
 class Mask:
     """Main float32 (H, W) mask in [0, 1] with optional child sub-masks."""
@@ -109,6 +133,18 @@ class Mask:
         self.data.fill(1.0)
         return self
 
+    def add_brush_stroke(self, points, radius: float = 15.0, erase: bool = False):
+        color = 0.0 if erase else 1.0
+        r = max(1, int(round(radius)))
+        thick = max(1, int(round(radius * 2)))
+        for i in range(len(points) - 1):
+            p1 = (int(round(points[i][0])), int(round(points[i][1])))
+            p2 = (int(round(points[i + 1][0])), int(round(points[i + 1][1])))
+            cv2.line(self.data, p1, p2, color, thick, cv2.LINE_AA)
+        for pt in points:
+            cv2.circle(self.data, (int(round(pt[0])), int(round(pt[1]))), r, color, -1, cv2.LINE_AA)
+        return self
+
     def feather(self, sigma: float = 5.0):
         if sigma > 0:
             ksize = int(sigma * 4) | 1
@@ -124,6 +160,7 @@ class Mask:
         radius_x: float,
         radius_y: float,
         feather: float = 0.5,
+        rotation: float = 0.0,
     ):
         h, w = self.data.shape[:2]
         cx, cy = center
@@ -131,23 +168,51 @@ class Mask:
         ry = max(1.0, float(radius_y))
         feather = float(np.clip(feather, 0.01, 0.99))
         y, x = np.ogrid[:h, :w]
-        dist = np.sqrt(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2)
+        dx = x - cx
+        dy = y - cy
+        if rotation != 0.0:
+            rad = np.radians(rotation)
+            cos_a, sin_a = np.cos(rad), np.sin(rad)
+            xr = dx * cos_a + dy * sin_a
+            yr = -dx * sin_a + dy * cos_a
+        else:
+            xr = dx
+            yr = dy
+        dist = np.sqrt((xr / rx) ** 2 + (yr / ry) ** 2)
         inner = 1.0 - feather
         self.data = np.clip(1.0 - (dist - inner) / feather, 0.0, 1.0).astype(np.float32)
         return self
 
-    def set_linear_gradient(self, start_pt, end_pt):
+    def set_linear_gradient(
+        self,
+        start_pt=None,
+        end_pt=None,
+        center=None,
+        size: float = 200.0,
+        feather: float = 0.5,
+        direction_deg: float = 0.0,
+    ):
         h, w = self.data.shape[:2]
-        x1, y1 = start_pt
-        x2, y2 = end_pt
-        dx, dy = x2 - x1, y2 - y1
-        len_sq = dx * dx + dy * dy
-        y, x = np.ogrid[:h, :w]
-        if len_sq < 1e-4:
-            self.data = np.ones((h, w), dtype=np.float32)
+        if start_pt is not None and end_pt is not None:
+            x1, y1 = start_pt
+            x2, y2 = end_pt
+            dx, dy = x2 - x1, y2 - y1
+            len_sq = dx * dx + dy * dy
+            y, x = np.ogrid[:h, :w]
+            if len_sq < 1e-4:
+                self.data = np.ones((h, w), dtype=np.float32)
+            else:
+                proj = 1.0 - ((x - x1) * dx + (y - y1) * dy) / len_sq
+                self.data = np.clip(proj, 0.0, 1.0).astype(np.float32)
         else:
-            proj = 1.0 - ((x - x1) * dx + (y - y1) * dy) / len_sq
-            self.data = np.clip(proj, 0.0, 1.0).astype(np.float32)
+            cx, cy = center if center is not None else (w / 2.0, h / 2.0)
+            rad = np.radians(direction_deg)
+            ux, uy = np.cos(rad), np.sin(rad)
+            y, x = np.ogrid[:h, :w]
+            p = (x - cx) * ux + (y - cy) * uy
+            span = max(1.0, float(size) * float(np.clip(feather, 0.05, 1.0)))
+            t = np.clip(0.5 - p / span, 0.0, 1.0)
+            self.data = t.astype(np.float32)
         return self
 
     def set_color_range(
