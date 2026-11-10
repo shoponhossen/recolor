@@ -1601,19 +1601,6 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 apply_color_range()
                 rebuild_tool_options()
 
-            def on_hue_change(e):
-                hue_deg = float(e.control.value)
-                # Convert HSV (H: 0..180, S: 220, V: 235) to RGB
-                hsv = np.uint8([[[int(hue_deg / 2.0), 220, 235]]])
-                rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)[0, 0]
-                state["col_rgb"] = (int(rgb[0]), int(rgb[1]), int(rgb[2]))
-                apply_color_range()
-                try:
-                    sample_box.bgcolor = f"#{state['col_rgb'][0]:02x}{state['col_rgb'][1]:02x}{state['col_rgb'][2]:02x}"
-                    sample_box.update()
-                except Exception:
-                    rebuild_tool_options()
-
             sample_hex = (
                 f"#{state['col_rgb'][0]:02x}{state['col_rgb'][1]:02x}{state['col_rgb'][2]:02x}"
                 if state["col_rgb"]
@@ -1697,22 +1684,6 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                                 expand=True,
                                 active_color=ft.Colors.ORANGE_ACCENT_400,
                                 on_change=on_tol,
-                            ),
-                        ],
-                        spacing=3,
-                    ),
-                    ft.Row(
-                        [
-                            ft.Text(
-                                "Hue Pick", size=10, color=ft.Colors.WHITE_70, width=54
-                            ),
-                            ft.Slider(
-                                min=0,
-                                max=360,
-                                value=0,
-                                expand=True,
-                                active_color=ft.Colors.CYAN_ACCENT_400,
-                                on_change=on_hue_change,
                             ),
                         ],
                         spacing=3,
