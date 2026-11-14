@@ -1,11 +1,11 @@
 [project]
 name = "recolor"
 version = "0.1.0"
-description = ""
+description = "A simple open-source photo color grading app for android."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "Flet developer", email = "you@example.com" }
+    { name = "Shopon Hossen", email = "shoponhossen@gmail.com" }
 ]
 dependencies = [
     "flet>=1.0.3",
@@ -29,9 +29,9 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.flet]
-org = "com.mycompany"
-product = "recolor"
-company = "Flet"
+org = "shopon"
+product = "ReColor"
+company = "Shopon"
 copyright = "Copyright (C) 2023-2026 by Flet"
 
 # src/assets/icon.png is the icon for every platform. Keep it transparent and
@@ -43,3 +43,10 @@ copyright = "Copyright (C) 2023-2026 by Flet"
 
 [tool.flet.app]
 path = "src"
+
+
+[tool.flet.boot_screen.flet]
+theme_mode = "dark"
+spinner_color_dark = "#FF6D00"
+spinner_size = 30
+startup_message = "ReColor"
