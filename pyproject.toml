@@ -3,7 +3,7 @@ name = "recolor"
 version = "0.1.0"
 description = "A simple open-source photo color grading app for android."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     { name = "Shopon Hossen", email = "shoponhossen@gmail.com" }
 ]
