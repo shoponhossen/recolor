@@ -1,4 +1,5 @@
-name: Build Flet App
+
+name: Build Flet APK
 
 on:
   push:
@@ -9,9 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Build APK
+      - name: Build ARM64 APK
         id: build
         uses: flet-dev/flet-build-action@v1
         with:
@@ -19,6 +21,7 @@ jobs:
           runner-python-version: "3.14"
           bundled-python-version: "3.14"
           build-number: ${{ github.run_number }}
+          extra-args: "--arch arm64-v8a"
 
       - name: Upload APK
         uses: actions/upload-artifact@v7
@@ -26,3 +29,4 @@ jobs:
           path: ${{ steps.build.outputs.archive-path }}
           archive: false
           if-no-files-found: error
+          retention-days: 1
