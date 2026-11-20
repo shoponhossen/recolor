@@ -31,6 +31,7 @@ jobs:
 
       - name: Build split APKs
         run: |
+          uv run flet clean
           yes | uv run flet build apk --split-per-abi --arch arm64-v8a
 
       - name: Upload APKs

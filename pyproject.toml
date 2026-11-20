@@ -8,18 +8,18 @@ authors = [
     { name = "Shopon Hossen", email = "shoponhossen@gmail.com" }
 ]
 dependencies = [
-    "flet>=1.0.3",
+    "flet>=1.0.4",
     "opencv-python>=5.0.0.93",
 ]
 
 [dependency-groups]
 dev = [
-    "flet-cli>=1.0.3",
-    "flet-desktop>=1.0.3",
-    "flet-web>=1.0.3",
+    "flet-cli>=1.0.4",
+    "flet-desktop>=1.0.4",
+    "flet-web>=1.0.4",
     # Integration testing with `flet test` / pytest. The `test` extra brings in
     # pytest, pytest-asyncio and the screenshot-comparison dependencies.
-    "flet[test]>=1.0.3",
+    "flet[test]>=1.0.4",
 ]
 
 [tool.pytest.ini_options]
@@ -49,3 +49,7 @@ theme_mode = "dark"
 spinner_color_dark = "#FF6D00"
 spinner_size = 30
 startup_message = "ReColor"
+
+
+[tool.flet.flutter.pubspec.dependency_overrides]
+jni = "^1.2.0"
