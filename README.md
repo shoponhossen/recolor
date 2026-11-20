@@ -134,14 +134,3 @@ DeprecationWarning: TextField.border_radius property is deprecated since version
   page.update()
 
 and make the tools scrollable to add more tools.
-
-add new tool:
- AI Selection
-
- using FastSAM-s.pt
-
-model file = r"src\assets\models\FastSAM-s.pt"
-
-in AI Selection tool options show Load and Unload the model in memory. this help a lot in performance.
-
-here is example tkinter app.

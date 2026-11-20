@@ -1,6 +1,6 @@
 import flet as ft
 from app import ReColor, ProjectManager, Project
-from utils import arr_to_jpeg_bytes
+from utils import arr_to_jpeg_bytes, get_default_sample_path
 from components.slider import CenterSlider
 from backend.backend import (
     ADJUSTMENTS_LIST,
@@ -15,7 +15,7 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
     pm: ProjectManager = app.projects_manager
 
     if pm.project is None:
-        pm.create_project("Default", r"D:\Projects\recolor\default.jpg")
+        pm.create_project("Default", get_default_sample_path())
 
     project: Project = pm.project
 

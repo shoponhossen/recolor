@@ -1,13 +1,13 @@
 import flet as ft
 from pathlib import Path
 from app import ReColor
-from utils import load_rgba, arr_to_jpeg_bytes
+from utils import load_rgba, arr_to_jpeg_bytes, get_default_sample_path
 import datetime
 
 
 def create_view(page: ft.Page, app: ReColor) -> ft.View:
     selected_image_path: str | None = None
-    default_sample_path = str(Path(r"D:\Projects\recolor\default.jpg").resolve())
+    default_sample_path = str(get_default_sample_path())
 
     # Pre-generate a default unique project name
     now_str = datetime.datetime.now().strftime("%b%d_%H%M")

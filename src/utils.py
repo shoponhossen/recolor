@@ -8,6 +8,16 @@ import cv2
 import flet as ft
 
 
+def get_default_sample_path() -> Path:
+    """Dynamically resolve default.jpg or fallback to bundled placeholder."""
+    root = Path(__file__).resolve().parent.parent
+    default_p = root / "default.jpg"
+    if default_p.exists():
+        return default_p
+    placeholder = Path(__file__).resolve().parent / "assets" / "placeholder.png"
+    return placeholder
+
+
 def get_projects_dir(page: ft.Page | None = None) -> Path:
     if page is not None and getattr(page, "platform", None) == ft.PagePlatform.ANDROID:
         base = Path(os.environ.get("FLET_APP_STORAGE_DATA", str(Path.home() / "Documents")))

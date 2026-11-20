@@ -1,5 +1,6 @@
 import flet as ft
 from app import ReColor
+from utils import get_default_sample_path
 from pathlib import Path
 import datetime
 
@@ -34,7 +35,7 @@ def home_view(page: ft.Page, app: ReColor) -> ft.View:
             page.show_dialog(dialog)
 
     async def open_demo_project(e):
-        default_path = Path(r"D:\Projects\recolor\default.jpg").resolve()
+        default_path = get_default_sample_path()
         demo_name = "Portrait_Demo"
         pm.create_project(demo_name, str(default_path))
         await page.push_route("/editor")
