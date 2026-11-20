@@ -17,6 +17,7 @@ from backend.backend import (
     Temperature,
     Saturation,
     Clarity,
+    Blur,
 )
 from app import Project, ProjectManager, ReColor
 from utils import arr_to_jpeg_bytes, create_mask_overlay, load_rgba, save_rgba
@@ -92,6 +93,30 @@ def test_layer_pipeline():
     layer.opacity = 0.5
     out_half = layer.apply(arr)
     assert out_half[..., :3].mean() < out[..., :3].mean()
+
+
+def test_blur_isolated_mask():
+    # Verify Blur only samples pixels from the selected mask
+    # Image has 100% red on left, 100% blue on right
+    img = np.zeros((60, 60, 4), dtype=np.uint8)
+    img[:, :30, 0] = 255  # Red
+    img[:, :30, 3] = 255
+    img[:, 30:, 2] = 255  # Blue
+    img[:, 30:, 3] = 255
+
+    mask = Mask(size=(60, 60))
+    mask.clear()
+    mask.data[:, :30] = 1.0  # Mask only covers the red left half
+
+    layer = Layer(name="Blur Layer", mask=mask, mask_type="brush")
+    layer.values["blur"] = 80.0
+
+    out = layer.apply(img)
+    # The blurred red half should NEVER contain any blue (0% blue contamination)
+    assert np.all(out[:, :30, 2] == 0)
+    # The unselected blue half should be completely unchanged
+    assert np.all(out[:, 30:, 2] == 255)
+    assert np.all(out[:, 30:, 0] == 0)
 
 
 def test_project_lifecycle():

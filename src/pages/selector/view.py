@@ -372,6 +372,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 state=state,
                 prev_w=prev_w,
                 prev_h=prev_h,
+                init_state=drag_state.get("initial_state"),
             )
             now = time.perf_counter()
             if now - last_refresh_time[0] >= 0.033:
@@ -387,6 +388,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 state=state,
                 prev_w=prev_w,
                 prev_h=prev_h,
+                init_state=drag_state.get("initial_state"),
             )
             now = time.perf_counter()
             if now - last_refresh_time[0] >= 0.033:

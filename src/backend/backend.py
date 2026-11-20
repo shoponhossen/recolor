@@ -482,6 +482,37 @@ class Sharpen(Adjustment):
         return out
 
 
+class Blur(Adjustment):
+    name, key, category = "Blur", "blur", "Effects"
+    min_val, max_val, default_val = 0.0, 100.0, 0.0
+
+    def apply(self, arr, value, mask: np.ndarray | None = None):
+        if value <= 0:
+            return arr
+        # Calculate blur sigma scaled with image size
+        h, w = arr.shape[:2]
+        base_dim = max(h, w)
+        # Sigma ranges from ~1.0 up to ~40.0 at 100%
+        sigma = max(0.5, (value / 100.0) * (base_dim * 0.04))
+        ksize = int(round(sigma * 3.0)) | 1
+
+        rgb_float = arr[..., :3].astype(np.float32)
+
+        if mask is not None and mask.shape[:2] == (h, w):
+            m = np.clip(mask.astype(np.float32), 0.0, 1.0)
+            # Normalized convolution: average pixels strictly from the selected mask
+            masked_rgb = rgb_float * m[..., None]
+            num = cv2.GaussianBlur(masked_rgb, (ksize, ksize), sigmaX=sigma)
+            denom = cv2.GaussianBlur(m, (ksize, ksize), sigmaX=sigma)[..., None]
+            blurred = np.where(denom > 1e-4, num / np.maximum(denom, 1e-4), rgb_float)
+        else:
+            blurred = cv2.GaussianBlur(rgb_float, (ksize, ksize), sigmaX=sigma)
+
+        out = arr.copy()
+        out[..., :3] = np.clip(blurred, 0, 255).astype(np.uint8)
+        return out
+
+
 ADJUSTMENTS_LIST = [
     Exposure(),
     Contrast(),
@@ -497,6 +528,7 @@ ADJUSTMENTS_LIST = [
     Clarity(),
     Vignette(),
     Sharpen(),
+    Blur(),
 ]
 
 ADJUSTMENTS_MAP: dict[str, Adjustment] = {adj.key: adj for adj in ADJUSTMENTS_LIST}
@@ -561,16 +593,20 @@ class Layer:
         if not self.visible or not self.has_adjustments():
             return arr
 
+        eff_mask = self.get_effective_mask(arr.shape[:2])
         out = arr
         for adj in ADJUSTMENTS_LIST:
             val = self.values.get(adj.key, 0.0)
             if val != 0.0:
-                out = adj.apply(out, val)
+                if adj.key == "blur":
+                    out = adj.apply(out, val, mask=eff_mask)
+                else:
+                    out = adj.apply(out, val)
 
         if out is arr:
             return arr
 
-        m = self.get_effective_mask(arr.shape[:2])[..., None]
+        m = eff_mask[..., None]
         base = arr.astype(np.float32)
         edited = out.astype(np.float32)
         blended = base * (1.0 - m) + edited * m

@@ -235,8 +235,10 @@ def update_radial_drag(
     state: dict,
     prev_w: int,
     prev_h: int,
+    init_state: dict | None = None,
 ) -> None:
     sx, sy = start_pt
+    init = init_state or {}
     if mode == "create":
         dx = ix - sx
         dy = iy - sy
@@ -250,8 +252,10 @@ def update_radial_drag(
     elif mode == "move":
         dx = ix - sx
         dy = iy - sy
-        state["rad_cx"] = float(state["rad_cx"] + dx)
-        state["rad_cy"] = float(state["rad_cy"] + dy)
+        base_cx = float(init.get("cx", sx))
+        base_cy = float(init.get("cy", sy))
+        state["rad_cx"] = float(base_cx + dx)
+        state["rad_cy"] = float(base_cy + dy)
     elif mode == "rotate":
         cx = float(state["rad_cx"])
         cy = float(state["rad_cy"])
@@ -440,8 +444,10 @@ def update_linear_drag(
     state: dict,
     prev_w: int,
     prev_h: int,
+    init_state: dict | None = None,
 ) -> None:
     sx, sy = start_pt
+    init = init_state or {}
     if mode == "create":
         dx = ix - sx
         dy = iy - sy
@@ -454,8 +460,10 @@ def update_linear_drag(
     elif mode == "move":
         dx = ix - sx
         dy = iy - sy
-        state["lin_cx"] = float(state["lin_cx"] + dx)
-        state["lin_cy"] = float(state["lin_cy"] + dy)
+        base_cx = float(init.get("cx", sx))
+        base_cy = float(init.get("cy", sy))
+        state["lin_cx"] = float(base_cx + dx)
+        state["lin_cy"] = float(base_cy + dy)
     elif mode == "rotate":
         cx = float(state["lin_cx"])
         cy = float(state["lin_cy"])
