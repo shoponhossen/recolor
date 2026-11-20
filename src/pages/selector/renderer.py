@@ -3,6 +3,7 @@ import cv2
 from utils import arr_to_jpeg_bytes, create_mask_overlay
 from .constants import MAIN_COLOR, ERASE_COLOR, PAINT_COLOR
 from .helpers import safe_at
+from .gizmo import draw_radial_gizmo, draw_linear_gizmo
 
 
 def render_mask_canvas(
@@ -63,5 +64,12 @@ def render_mask_canvas(
     # Upscale back to (prev_w, prev_h) during fast preview so layout stays stable
     if fast and (cw != prev_w or ch != prev_h):
         overlay = cv2.resize(overlay, (prev_w, prev_h), interpolation=cv2.INTER_NEAREST)
+
+    # Lightroom-style interactive on-canvas gizmos
+    tool = state.get("tool")
+    if tool == "radial":
+        draw_radial_gizmo(overlay, state)
+    elif tool == "linear":
+        draw_linear_gizmo(overlay, state, prev_w, prev_h)
 
     return arr_to_jpeg_bytes(overlay, quality=jpeg_q)

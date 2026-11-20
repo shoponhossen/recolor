@@ -10,6 +10,8 @@ def generate_radial_mask(
     deg: float,
     x_grid: np.ndarray,
     y_grid: np.ndarray,
+    opacity: float = 1.0,
+    invert: bool = False,
 ) -> np.ndarray:
     """Generate float32 radial elliptical mask in [0.0, 1.0]."""
     fth = float(np.clip(feather, 0.01, 0.99))
@@ -28,7 +30,12 @@ def generate_radial_mask(
 
     dist = np.sqrt((xr / rx_safe) ** 2 + (yr / ry_safe) ** 2)
     inner = 1.0 - fth
-    return np.clip(1.0 - (dist - inner) / fth, 0.0, 1.0).astype(np.float32)
+    res = np.clip(1.0 - (dist - inner) / fth, 0.0, 1.0).astype(np.float32)
+    if invert:
+        res = 1.0 - res
+    if opacity < 1.0:
+        res = res * float(max(0.0, min(1.0, opacity)))
+    return res.astype(np.float32)
 
 
 def generate_linear_mask(
@@ -38,18 +45,29 @@ def generate_linear_mask(
     deg: float,
     x_grid: np.ndarray,
     y_grid: np.ndarray,
-    span_base: float,
+    span_base: float = 0.0,
+    span: float = 0.0,
+    opacity: float = 1.0,
+    invert: bool = False,
 ) -> np.ndarray:
     """Generate smooth linear gradient mask with cubic falloff."""
     rad = np.radians(deg)
     ux, uy = np.cos(rad), np.sin(rad)
-    fth = float(np.clip(feather, 0.05, 0.95))
-    span = max(3.0, span_base * fth)
+    if span > 0.0:
+        eff_span = max(5.0, float(span))
+    else:
+        fth = float(np.clip(feather, 0.05, 0.95))
+        eff_span = max(3.0, (span_base if span_base > 0 else 100.0) * fth)
 
     p = (x_grid - cx) * ux + (y_grid - cy) * uy
-    t = np.clip(0.5 - p / span, 0.0, 1.0)
+    t = np.clip(0.5 - p / eff_span, 0.0, 1.0)
     # Smooth Hermite interpolation (3t^2 - 2t^3)
-    return (t * t * (3.0 - 2.0 * t)).astype(np.float32)
+    res = (t * t * (3.0 - 2.0 * t)).astype(np.float32)
+    if invert:
+        res = 1.0 - res
+    if opacity < 1.0:
+        res = res * float(max(0.0, min(1.0, opacity)))
+    return res.astype(np.float32)
 
 
 def generate_color_range_mask(

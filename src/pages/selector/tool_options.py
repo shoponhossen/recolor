@@ -121,57 +121,16 @@ def build_tool_options(
         )
 
     elif tool == "radial":
-        rot_val_text = ft.Text(
-            f"{int(round(state['rad_rot']))}°",
-            size=10,
-            color=ft.Colors.ORANGE_ACCENT_200,
-        )
-
-        def on_rx(e):
-            state["rad_width"] = float(e.control.value)
-            if throttle_radial:
-                throttle_radial()
-
-        def on_rx_end(e):
-            state["rad_width"] = float(e.control.value)
+        def on_opacity_change(e):
+            state["rad_opacity"] = float(e.control.value)
             apply_radial(fast=False)
 
-        def on_ry(e):
-            state["rad_height"] = float(e.control.value)
-            if throttle_radial:
-                throttle_radial()
-
-        def on_ry_end(e):
-            state["rad_height"] = float(e.control.value)
+        def toggle_invert():
+            state["rad_invert"] = not state.get("rad_invert", False)
             apply_radial(fast=False)
+            rebuild()
 
-        def on_rf(e):
-            state["rad_feather"] = float(e.control.value)
-            if throttle_radial:
-                throttle_radial()
-
-        def on_rf_end(e):
-            state["rad_feather"] = float(e.control.value)
-            apply_radial(fast=False)
-
-        def on_rot(e):
-            state["rad_rot"] = float(e.control.value)
-            rot_val_text.value = f"{int(round(state['rad_rot']))}°"
-            try:
-                rot_val_text.update()
-            except Exception:
-                pass
-            if throttle_radial:
-                throttle_radial()
-
-        def on_rot_end(e):
-            state["rad_rot"] = float(e.control.value)
-            rot_val_text.value = f"{int(round(state['rad_rot']))}°"
-            try:
-                rot_val_text.update()
-            except Exception:
-                pass
-            apply_radial(fast=False)
+        is_inv = state.get("rad_invert", False)
 
         container.content = ft.Column(
             [
@@ -183,130 +142,70 @@ def build_tool_options(
                             color=ft.Colors.ORANGE_ACCENT_400,
                         ),
                         ft.Text(
-                            "Radial",
+                            "Radial Gradient",
                             size=11,
                             weight=ft.FontWeight.BOLD,
                             color=ft.Colors.WHITE,
                         ),
                         ft.Text(
-                            "• Drag canvas to place",
+                            "• Drag to create & edit on canvas",
                             size=9,
                             color=ft.Colors.WHITE_54,
                             expand=True,
                         ),
-                        ft.Text("Rot:", size=10, color=ft.Colors.WHITE_70),
-                        rot_val_text,
+                        ft.Container(
+                            content=ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.Icons.SWAP_HORIZ,
+                                        size=11,
+                                        color=ft.Colors.WHITE if is_inv else ft.Colors.WHITE_70,
+                                    ),
+                                    ft.Text(
+                                        "Invert",
+                                        size=9,
+                                        color=ft.Colors.WHITE if is_inv else ft.Colors.WHITE_70,
+                                    ),
+                                ],
+                                spacing=2,
+                            ),
+                            padding=ft.Padding.symmetric(horizontal=6, vertical=2),
+                            bgcolor=ft.Colors.ORANGE_ACCENT_700 if is_inv else "#1A2234",
+                            border_radius=ft.BorderRadius.all(5),
+                            on_click=lambda ev: toggle_invert(),
+                        ),
+                    ],
+                    spacing=4,
+                ),
+                ft.Row(
+                    [
+                        ft.Text("Opacity", size=10, color=ft.Colors.WHITE_70, width=42),
+                        ft.Slider(
+                            min=0.05,
+                            max=1.0,
+                            value=state.get("rad_opacity", 1.0),
+                            expand=True,
+                            active_color=ft.Colors.ORANGE_ACCENT_400,
+                            on_change=on_opacity_change,
+                        ),
                     ],
                     spacing=3,
-                ),
-                ft.Row(
-                    [
-                        ft.Text("W", size=10, color=ft.Colors.WHITE_70, width=14),
-                        ft.Slider(
-                            min=10,
-                            max=prev_w * 1.5,
-                            value=state["rad_width"],
-                            expand=True,
-                            active_color=ft.Colors.ORANGE_ACCENT_400,
-                            on_change=on_rx,
-                            on_change_end=on_rx_end,
-                        ),
-                        ft.Text("H", size=10, color=ft.Colors.WHITE_70, width=14),
-                        ft.Slider(
-                            min=10,
-                            max=prev_h * 1.5,
-                            value=state["rad_height"],
-                            expand=True,
-                            active_color=ft.Colors.ORANGE_ACCENT_400,
-                            on_change=on_ry,
-                            on_change_end=on_ry_end,
-                        ),
-                    ],
-                    spacing=2,
-                ),
-                ft.Row(
-                    [
-                        ft.Text("Soft", size=10, color=ft.Colors.WHITE_70, width=24),
-                        ft.Slider(
-                            min=0.01,
-                            max=0.99,
-                            value=state["rad_feather"],
-                            expand=True,
-                            active_color=ft.Colors.ORANGE_ACCENT_400,
-                            on_change=on_rf,
-                            on_change_end=on_rf_end,
-                        ),
-                        ft.Text("Angle", size=10, color=ft.Colors.WHITE_70, width=28),
-                        ft.Slider(
-                            min=0,
-                            max=360,
-                            value=state["rad_rot"],
-                            expand=True,
-                            active_color=ft.Colors.ORANGE_ACCENT_400,
-                            on_change=on_rot,
-                            on_change_end=on_rot_end,
-                        ),
-                    ],
-                    spacing=2,
                 ),
             ],
             spacing=1,
         )
 
     elif tool == "linear":
-        deg_val_text = ft.Text(
-            f"{int(round(state['lin_deg']))}°",
-            size=10,
-            color=ft.Colors.ORANGE_ACCENT_200,
-        )
-
-        def on_lf(e):
-            state["lin_feather"] = float(e.control.value)
-            if throttle_linear:
-                throttle_linear()
-
-        def on_lf_end(e):
-            state["lin_feather"] = float(e.control.value)
+        def on_opacity_change(e):
+            state["lin_opacity"] = float(e.control.value)
             apply_linear(fast=False)
 
-        def on_deg(e):
-            state["lin_deg"] = float(e.control.value)
-            deg_val_text.value = f"{int(round(state['lin_deg']))}°"
-            try:
-                deg_val_text.update()
-            except Exception:
-                pass
-            if throttle_linear:
-                throttle_linear()
-
-        def on_deg_end(e):
-            state["lin_deg"] = float(e.control.value)
-            deg_val_text.value = f"{int(round(state['lin_deg']))}°"
-            try:
-                deg_val_text.update()
-            except Exception:
-                pass
-            apply_linear(fast=False)
-
-        def set_preset_deg(deg: float):
-            state["lin_deg"] = deg
-            deg_val_text.value = f"{int(round(deg))}°"
+        def toggle_invert():
+            state["lin_invert"] = not state.get("lin_invert", False)
             apply_linear(fast=False)
             rebuild()
 
-        def mk_preset(label: str, deg: float):
-            is_sel = abs(state["lin_deg"] - deg) < 5.0
-            return ft.Container(
-                content=ft.Text(
-                    label,
-                    size=9,
-                    color=ft.Colors.WHITE if is_sel else ft.Colors.WHITE_70,
-                ),
-                padding=ft.Padding.symmetric(horizontal=7, vertical=3),
-                bgcolor=ft.Colors.ORANGE_ACCENT_700 if is_sel else "#1A2234",
-                border_radius=ft.BorderRadius.all(6),
-                on_click=lambda ev, d=deg: set_preset_deg(d),
-            )
+        is_inv = state.get("lin_invert", False)
 
         container.content = ft.Column(
             [
@@ -318,44 +217,54 @@ def build_tool_options(
                             color=ft.Colors.ORANGE_ACCENT_400,
                         ),
                         ft.Text(
-                            "Linear",
+                            "Linear Gradient",
                             size=11,
                             weight=ft.FontWeight.BOLD,
                             color=ft.Colors.WHITE,
                         ),
-                        ft.Container(expand=True),
-                        mk_preset("Bottom", 270.0),
-                        mk_preset("Top", 90.0),
-                        mk_preset("Right", 180.0),
-                        mk_preset("Left", 0.0),
-                        deg_val_text,
+                        ft.Text(
+                            "• Drag to create & edit on canvas",
+                            size=9,
+                            color=ft.Colors.WHITE_54,
+                            expand=True,
+                        ),
+                        ft.Container(
+                            content=ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.Icons.SWAP_HORIZ,
+                                        size=11,
+                                        color=ft.Colors.WHITE if is_inv else ft.Colors.WHITE_70,
+                                    ),
+                                    ft.Text(
+                                        "Invert",
+                                        size=9,
+                                        color=ft.Colors.WHITE if is_inv else ft.Colors.WHITE_70,
+                                    ),
+                                ],
+                                spacing=2,
+                            ),
+                            padding=ft.Padding.symmetric(horizontal=6, vertical=2),
+                            bgcolor=ft.Colors.ORANGE_ACCENT_700 if is_inv else "#1A2234",
+                            border_radius=ft.BorderRadius.all(5),
+                            on_click=lambda ev: toggle_invert(),
+                        ),
                     ],
-                    spacing=3,
+                    spacing=4,
                 ),
                 ft.Row(
                     [
-                        ft.Text("Soft", size=10, color=ft.Colors.WHITE_70, width=24),
+                        ft.Text("Opacity", size=10, color=ft.Colors.WHITE_70, width=42),
                         ft.Slider(
                             min=0.05,
-                            max=0.95,
-                            value=state["lin_feather"],
+                            max=1.0,
+                            value=state.get("lin_opacity", 1.0),
                             expand=True,
                             active_color=ft.Colors.ORANGE_ACCENT_400,
-                            on_change=on_lf,
-                            on_change_end=on_lf_end,
-                        ),
-                        ft.Text("Angle", size=10, color=ft.Colors.WHITE_70, width=28),
-                        ft.Slider(
-                            min=0,
-                            max=360,
-                            value=state["lin_deg"],
-                            expand=True,
-                            active_color=ft.Colors.ORANGE_ACCENT_400,
-                            on_change=on_deg,
-                            on_change_end=on_deg_end,
+                            on_change=on_opacity_change,
                         ),
                     ],
-                    spacing=2,
+                    spacing=3,
                 ),
             ],
             spacing=1,

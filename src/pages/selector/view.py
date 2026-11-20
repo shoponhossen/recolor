@@ -11,6 +11,12 @@ from .helpers import (
     apply_stroke_feather,
     map_coords_to_img,
 )
+from .gizmo import (
+    hit_test_radial,
+    update_radial_drag,
+    hit_test_linear,
+    update_linear_drag,
+)
 from .generators import (
     generate_radial_mask,
     generate_linear_mask,
@@ -82,13 +88,18 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         "rad_cx": prev_w / 2.0,
         "rad_cy": prev_h / 2.0,
         "rad_width": prev_w * 0.35,
-        "rad_height": prev_h * 0.35,
+        "rad_height": prev_h * 0.25,
         "rad_feather": 0.5,
         "rad_rot": 0.0,
+        "rad_opacity": 1.0,
+        "rad_invert": False,
         "lin_cx": prev_w / 2.0,
         "lin_cy": prev_h / 2.0,
+        "lin_span": min(prev_w, prev_h) * 0.4,
         "lin_feather": 0.5,
         "lin_deg": 270.0,
+        "lin_opacity": 1.0,
+        "lin_invert": False,
         "col_rgb": None,
         "col_tol": 0.35,
     }
@@ -183,6 +194,8 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 deg=state["rad_rot"],
                 x_grid=fast_x_grid,
                 y_grid=fast_y_grid,
+                opacity=state.get("rad_opacity", 1.0),
+                invert=state.get("rad_invert", False),
             )
             np.copyto(fast_im_buf, grad)
             refresh_canvas(fast=True)
@@ -196,6 +209,8 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 deg=state["rad_rot"],
                 x_grid=x_grid,
                 y_grid=y_grid,
+                opacity=state.get("rad_opacity", 1.0),
+                invert=state.get("rad_invert", False),
             )
             np.copyto(im_buf, grad)
             cv2.resize(im_buf, (fast_w, fast_h), dst=fast_im_buf, interpolation=cv2.INTER_LINEAR)
@@ -210,7 +225,9 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 deg=state["lin_deg"],
                 x_grid=fast_x_grid,
                 y_grid=fast_y_grid,
-                span_base=min(fast_w, fast_h) * 0.7,
+                span=state.get("lin_span", min(prev_w, prev_h) * 0.4) * fast_scale,
+                opacity=state.get("lin_opacity", 1.0),
+                invert=state.get("lin_invert", False),
             )
             np.copyto(fast_im_buf, t)
             refresh_canvas(fast=True)
@@ -222,7 +239,9 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 deg=state["lin_deg"],
                 x_grid=x_grid,
                 y_grid=y_grid,
-                span_base=min(prev_w, prev_h) * 0.7,
+                span=state.get("lin_span", min(prev_w, prev_h) * 0.4),
+                opacity=state.get("lin_opacity", 1.0),
+                invert=state.get("lin_invert", False),
             )
             np.copyto(im_buf, t)
             cv2.resize(im_buf, (fast_w, fast_h), dst=fast_im_buf, interpolation=cv2.INTER_LINEAR)
@@ -239,6 +258,12 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         np.copyto(im_buf, new_mask)
         cv2.resize(im_buf, (fast_w, fast_h), dst=fast_im_buf, interpolation=cv2.INTER_LINEAR)
         refresh_canvas(fast=False)
+
+    drag_state = {
+        "mode": None,
+        "start_img": (0.0, 0.0),
+        "initial_state": {},
+    }
 
     # Touch / Drag Handlers
     def on_pan_start(e: ft.DragStartEvent):
@@ -262,13 +287,38 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             last_refresh_time[0] = time.perf_counter()
             refresh_canvas(fast=True)
         elif tool == "radial":
-            state["rad_cx"] = ix
-            state["rad_cy"] = iy
-            apply_radial(fast=True)
+            mode = hit_test_radial(ix, iy, state)
+            drag_state["mode"] = mode
+            drag_state["start_img"] = (ix, iy)
+            drag_state["initial_state"] = {
+                "cx": state["rad_cx"],
+                "cy": state["rad_cy"],
+                "w": state["rad_width"],
+                "h": state["rad_height"],
+                "rot": state["rad_rot"],
+                "feather": state["rad_feather"],
+            }
+            if mode == "create":
+                state["rad_cx"] = ix
+                state["rad_cy"] = iy
+                state["rad_width"] = 15.0
+                state["rad_height"] = 10.0
+                apply_radial(fast=True)
         elif tool == "linear":
-            state["lin_cx"] = ix
-            state["lin_cy"] = iy
-            apply_linear(fast=True)
+            mode = hit_test_linear(ix, iy, state, prev_w, prev_h)
+            drag_state["mode"] = mode
+            drag_state["start_img"] = (ix, iy)
+            drag_state["initial_state"] = {
+                "cx": state["lin_cx"],
+                "cy": state["lin_cy"],
+                "span": state.get("lin_span", min(prev_w, prev_h) * 0.4),
+                "deg": state["lin_deg"],
+            }
+            if mode == "create":
+                state["lin_cx"] = ix
+                state["lin_cy"] = iy
+                state["lin_span"] = 15.0
+                apply_linear(fast=True)
 
     def on_pan_update(e: ft.DragUpdateEvent):
         tool = state["tool"]
@@ -313,15 +363,31 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 last_refresh_time[0] = now
                 refresh_canvas(fast=True)
         elif tool == "radial":
-            state["rad_cx"] = ix
-            state["rad_cy"] = iy
+            mode = drag_state["mode"] or "create"
+            update_radial_drag(
+                mode=mode,
+                ix=ix,
+                iy=iy,
+                start_pt=drag_state["start_img"],
+                state=state,
+                prev_w=prev_w,
+                prev_h=prev_h,
+            )
             now = time.perf_counter()
             if now - last_refresh_time[0] >= 0.033:
                 last_refresh_time[0] = now
                 apply_radial(fast=True)
         elif tool == "linear":
-            state["lin_cx"] = ix
-            state["lin_cy"] = iy
+            mode = drag_state["mode"] or "create"
+            update_linear_drag(
+                mode=mode,
+                ix=ix,
+                iy=iy,
+                start_pt=drag_state["start_img"],
+                state=state,
+                prev_w=prev_w,
+                prev_h=prev_h,
+            )
             now = time.perf_counter()
             if now - last_refresh_time[0] >= 0.033:
                 last_refresh_time[0] = now
@@ -341,6 +407,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             apply_radial(fast=False)
         elif tool == "linear":
             apply_linear(fast=False)
+        drag_state["mode"] = None
 
     def on_tap_up(e: ft.TapEvent):
         ix, iy = to_img(e.local_position.x, e.local_position.y)
@@ -353,13 +420,17 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
             apply_color_range()
             rebuild_tool_options()
         elif tool == "radial":
-            state["rad_cx"] = ix
-            state["rad_cy"] = iy
-            apply_radial(fast=False)
+            mode = hit_test_radial(ix, iy, state)
+            if mode in ("create", "move"):
+                state["rad_cx"] = ix
+                state["rad_cy"] = iy
+                apply_radial(fast=False)
         elif tool == "linear":
-            state["lin_cx"] = ix
-            state["lin_cy"] = iy
-            apply_linear(fast=False)
+            mode = hit_test_linear(ix, iy, state, prev_w, prev_h)
+            if mode in ("create", "move"):
+                state["lin_cx"] = ix
+                state["lin_cy"] = iy
+                apply_linear(fast=False)
 
     gesture_canvas = ft.GestureDetector(
         content=ft.Container(
@@ -555,7 +626,12 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
                 fast_im_buf.fill(0.0)
                 stroke_pts.clear()
             state["tool"] = tool
-            refresh_canvas(fast=False)
+            if tool == "radial":
+                apply_radial(fast=False)
+            elif tool == "linear":
+                apply_linear(fast=False)
+            else:
+                refresh_canvas(fast=False)
         else:
             state["tool"] = tool
 
