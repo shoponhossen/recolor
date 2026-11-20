@@ -135,24 +135,41 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         except Exception:
             pass
 
+    mask_list_col = ft.Column(spacing=5, scroll=ft.ScrollMode.AUTO)
+
+    mask_panel = ft.Container(
+        content=ft.Column(
+            controls=[
+                ft.Container(height=4),
+                mask_list_col,
+            ],
+            scroll=ft.ScrollMode.AUTO,
+        ),
+        right=0,
+        top=0,
+        bottom=0,
+        width=88,
+        bgcolor=ft.Colors.with_opacity(0.88, "#0D1120"),
+        border_radius=ft.BorderRadius.only(top_left=8, bottom_left=8),
+        padding=ft.Padding.symmetric(horizontal=4, vertical=4),
+        visible=panel_visible[0],
+    )
+
+    def update_mask_panel_layout():
+        mask_panel.right = 0
+        mask_panel.top = 0
+        mask_panel.bottom = 0
+        try:
+            mask_panel.update()
+        except Exception:
+            pass
+
     def on_canvas_size(e):
         vw = float(e.width or 360)
         vh = float(e.height or 420)
         viewport[0] = vw
         viewport[1] = vh
-
-        scale = min(vw / prev_w, vh / prev_h)
-        rw, rh = prev_w * scale, prev_h * scale
-        ox = max(0.0, (vw - rw) / 2.0)
-        oy = max(0.0, (vh - rh) / 2.0)
-
-        mask_panel.right = max(0, int(round(ox)))
-        mask_panel.top = max(0, int(round(oy)))
-        mask_panel.bottom = max(0, int(round(oy)))
-        try:
-            mask_panel.update()
-        except Exception:
-            pass
+        update_mask_panel_layout()
 
     # Procedural mask applications
     def apply_radial(fast: bool = False):
@@ -347,6 +364,7 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     gesture_canvas = ft.GestureDetector(
         content=ft.Container(
             content=img_disp,
+            alignment=ft.Alignment.CENTER,
             expand=True,
             on_size_change=on_canvas_size,
             size_change_interval=50,
@@ -473,28 +491,9 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
         "show_child_opts": lambda li, si: show_child_options(page, project, li, si, panel_handlers),
     }
 
-    mask_list_col = ft.Column(spacing=5, scroll=ft.ScrollMode.AUTO)
-
     def rebuild_mask_list():
         render_mask_list_column(mask_list_col, project, state, panel_handlers)
-
-    mask_panel = ft.Container(
-        content=ft.Column(
-            controls=[
-                ft.Container(height=4),
-                mask_list_col,
-            ],
-            scroll=ft.ScrollMode.AUTO,
-        ),
-        right=0,
-        top=0,
-        bottom=0,
-        width=88,
-        bgcolor=ft.Colors.with_opacity(0.88, "#0D1120"),
-        border_radius=ft.BorderRadius.all(10),
-        padding=ft.Padding.symmetric(horizontal=4, vertical=4),
-        visible=panel_visible[0],
-    )
+        update_mask_panel_layout()
 
     def toggle_panel():
         panel_visible[0] = not panel_visible[0]
@@ -518,8 +517,8 @@ def selector_view(page: ft.Page, app: ReColor) -> ft.View:
     # Tool options container
     tool_options_container = ft.Container(
         bgcolor="#111521",
-        padding=ft.Padding.symmetric(horizontal=10, vertical=6),
-        height=144,
+        padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+        height=78,
     )
 
     def throttle_radial_fast():

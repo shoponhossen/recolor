@@ -639,7 +639,11 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
 
     canvas_stack = ft.Stack(
         controls=[
-            ft.Container(content=img_control, expand=True),
+            ft.Container(
+                content=img_control,
+                expand=True,
+                alignment=ft.Alignment.CENTER,
+            ),
             layer_dropdown_panel,
             layer_chip,
         ],
@@ -719,7 +723,10 @@ def editor_view(page: ft.Page, app: ReColor) -> ft.View:
                     controls=[
                         # Canvas — takes most vertical space
                         ft.Container(
-                            content=canvas_stack, expand=True, bgcolor="#080B11"
+                            content=canvas_stack,
+                            expand=True,
+                            bgcolor="#080B11",
+                            alignment=ft.Alignment.CENTER,
                         ),
                         # Category Bar
                         category_bar,

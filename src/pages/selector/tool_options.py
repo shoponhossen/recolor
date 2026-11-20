@@ -38,11 +38,11 @@ def build_tool_options(
                     [
                         ft.Icon(
                             ft.Icons.BRUSH,
-                            size=14,
+                            size=13,
                             color=ft.Colors.ORANGE_ACCENT_400,
                         ),
                         ft.Text(
-                            "Brush Tool",
+                            "Brush",
                             size=11,
                             color=ft.Colors.WHITE,
                             weight=ft.FontWeight.BOLD,
@@ -53,7 +53,7 @@ def build_tool_options(
                                 [
                                     ft.Icon(
                                         ft.Icons.BRUSH,
-                                        size=12,
+                                        size=11,
                                         color=ft.Colors.WHITE if is_paint else ft.Colors.WHITE_70,
                                     ),
                                     ft.Text(
@@ -62,11 +62,11 @@ def build_tool_options(
                                         color=ft.Colors.WHITE if is_paint else ft.Colors.WHITE_70,
                                     ),
                                 ],
-                                spacing=3,
+                                spacing=2,
                             ),
-                            padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+                            padding=ft.Padding.symmetric(horizontal=6, vertical=2),
                             bgcolor=ft.Colors.GREEN_700 if is_paint else "#1A2234",
-                            border_radius=ft.BorderRadius.all(6),
+                            border_radius=ft.BorderRadius.all(5),
                             on_click=lambda ev: set_mode("paint"),
                         ),
                         ft.Container(
@@ -74,7 +74,7 @@ def build_tool_options(
                                 [
                                     ft.Icon(
                                         ft.Icons.AUTO_FIX_NORMAL,
-                                        size=12,
+                                        size=11,
                                         color=ft.Colors.WHITE if not is_paint else ft.Colors.WHITE_70,
                                     ),
                                     ft.Text(
@@ -83,19 +83,19 @@ def build_tool_options(
                                         color=ft.Colors.WHITE if not is_paint else ft.Colors.WHITE_70,
                                     ),
                                 ],
-                                spacing=3,
+                                spacing=2,
                             ),
-                            padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+                            padding=ft.Padding.symmetric(horizontal=6, vertical=2),
                             bgcolor=ft.Colors.RED_700 if not is_paint else "#1A2234",
-                            border_radius=ft.BorderRadius.all(6),
+                            border_radius=ft.BorderRadius.all(5),
                             on_click=lambda ev: set_mode("erase"),
                         ),
                     ],
-                    spacing=6,
+                    spacing=5,
                 ),
                 ft.Row(
                     [
-                        ft.Text("Size", size=10, color=ft.Colors.WHITE_70, width=32),
+                        ft.Text("Size", size=10, color=ft.Colors.WHITE_70, width=24),
                         ft.Slider(
                             min=5,
                             max=150,
@@ -104,12 +104,7 @@ def build_tool_options(
                             active_color=ft.Colors.ORANGE_ACCENT_400,
                             on_change=on_sz,
                         ),
-                    ],
-                    spacing=4,
-                ),
-                ft.Row(
-                    [
-                        ft.Text("Soft", size=10, color=ft.Colors.WHITE_70, width=32),
+                        ft.Text("Soft", size=10, color=ft.Colors.WHITE_70, width=24),
                         ft.Slider(
                             min=0,
                             max=1,
@@ -119,10 +114,10 @@ def build_tool_options(
                             on_change=on_fth,
                         ),
                     ],
-                    spacing=4,
+                    spacing=3,
                 ),
             ],
-            spacing=2,
+            spacing=1,
         )
 
     elif tool == "radial":
@@ -188,13 +183,13 @@ def build_tool_options(
                             color=ft.Colors.ORANGE_ACCENT_400,
                         ),
                         ft.Text(
-                            "Radial Mask",
+                            "Radial",
                             size=11,
                             weight=ft.FontWeight.BOLD,
                             color=ft.Colors.WHITE,
                         ),
                         ft.Text(
-                            "• Tap/drag canvas to place mask",
+                            "• Drag canvas to place",
                             size=9,
                             color=ft.Colors.WHITE_54,
                             expand=True,
@@ -202,11 +197,11 @@ def build_tool_options(
                         ft.Text("Rot:", size=10, color=ft.Colors.WHITE_70),
                         rot_val_text,
                     ],
-                    spacing=4,
+                    spacing=3,
                 ),
                 ft.Row(
                     [
-                        ft.Text("W", size=10, color=ft.Colors.WHITE_70, width=16),
+                        ft.Text("W", size=10, color=ft.Colors.WHITE_70, width=14),
                         ft.Slider(
                             min=10,
                             max=prev_w * 1.5,
@@ -216,7 +211,7 @@ def build_tool_options(
                             on_change=on_rx,
                             on_change_end=on_rx_end,
                         ),
-                        ft.Text("H", size=10, color=ft.Colors.WHITE_70, width=16),
+                        ft.Text("H", size=10, color=ft.Colors.WHITE_70, width=14),
                         ft.Slider(
                             min=10,
                             max=prev_h * 1.5,
@@ -227,11 +222,11 @@ def build_tool_options(
                             on_change_end=on_ry_end,
                         ),
                     ],
-                    spacing=3,
+                    spacing=2,
                 ),
                 ft.Row(
                     [
-                        ft.Text("Soft", size=10, color=ft.Colors.WHITE_70, width=28),
+                        ft.Text("Soft", size=10, color=ft.Colors.WHITE_70, width=24),
                         ft.Slider(
                             min=0.01,
                             max=0.99,
@@ -241,7 +236,7 @@ def build_tool_options(
                             on_change=on_rf,
                             on_change_end=on_rf_end,
                         ),
-                        ft.Text("Angle", size=10, color=ft.Colors.WHITE_70, width=32),
+                        ft.Text("Angle", size=10, color=ft.Colors.WHITE_70, width=28),
                         ft.Slider(
                             min=0,
                             max=360,
@@ -252,10 +247,10 @@ def build_tool_options(
                             on_change_end=on_rot_end,
                         ),
                     ],
-                    spacing=3,
+                    spacing=2,
                 ),
             ],
-            spacing=2,
+            spacing=1,
         )
 
     elif tool == "linear":
@@ -323,13 +318,10 @@ def build_tool_options(
                             color=ft.Colors.ORANGE_ACCENT_400,
                         ),
                         ft.Text(
-                            "Linear Gradient",
+                            "Linear",
                             size=11,
                             weight=ft.FontWeight.BOLD,
                             color=ft.Colors.WHITE,
-                        ),
-                        ft.Text(
-                            "• Tap/drag to place", size=9, color=ft.Colors.WHITE_54
                         ),
                         ft.Container(expand=True),
                         mk_preset("Bottom", 270.0),
@@ -342,7 +334,7 @@ def build_tool_options(
                 ),
                 ft.Row(
                     [
-                        ft.Text("Feather", size=10, color=ft.Colors.WHITE_70, width=50),
+                        ft.Text("Soft", size=10, color=ft.Colors.WHITE_70, width=24),
                         ft.Slider(
                             min=0.05,
                             max=0.95,
@@ -352,12 +344,7 @@ def build_tool_options(
                             on_change=on_lf,
                             on_change_end=on_lf_end,
                         ),
-                    ],
-                    spacing=3,
-                ),
-                ft.Row(
-                    [
-                        ft.Text("Rotation", size=10, color=ft.Colors.WHITE_70, width=50),
+                        ft.Text("Angle", size=10, color=ft.Colors.WHITE_70, width=28),
                         ft.Slider(
                             min=0,
                             max=360,
@@ -368,10 +355,10 @@ def build_tool_options(
                             on_change_end=on_deg_end,
                         ),
                     ],
-                    spacing=3,
+                    spacing=2,
                 ),
             ],
-            spacing=2,
+            spacing=1,
         )
 
     elif tool == "color":
@@ -426,24 +413,13 @@ def build_tool_options(
                             color=ft.Colors.ORANGE_ACCENT_400,
                         ),
                         ft.Text(
-                            "Color Mask",
+                            "Color",
                             size=11,
                             weight=ft.FontWeight.BOLD,
                             color=ft.Colors.WHITE,
                         ),
-                        ft.Text(
-                            "• Tap image or pick color",
-                            size=9,
-                            color=ft.Colors.WHITE_54,
-                            expand=True,
-                        ),
                         sample_box,
-                    ],
-                    spacing=6,
-                ),
-                ft.Row(
-                    [
-                        ft.Text("Tolerance", size=10, color=ft.Colors.WHITE_70, width=54),
+                        ft.Text("Tol", size=10, color=ft.Colors.WHITE_70, width=20),
                         ft.Slider(
                             min=0.05,
                             max=0.75,
@@ -453,11 +429,11 @@ def build_tool_options(
                             on_change=on_tol,
                         ),
                     ],
-                    spacing=3,
+                    spacing=4,
                 ),
                 swatches_row,
             ],
-            spacing=2,
+            spacing=1,
         )
 
     try:
