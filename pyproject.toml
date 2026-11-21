@@ -10,6 +10,7 @@ authors = [
 dependencies = [
     "flet>=1.0.4",
     "opencv-python>=5.0.0.93",
+    "pillow>=12.3.0",
 ]
 
 [dependency-groups]
@@ -50,6 +51,3 @@ spinner_color_dark = "#FF6D00"
 spinner_size = 30
 startup_message = "ReColor"
 
-
-[tool.flet.flutter.pubspec.dependency_overrides]
-jni = "^1.2.0"

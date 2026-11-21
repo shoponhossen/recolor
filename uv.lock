@@ -1173,6 +1173,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "flet" },
     { name = "opencv-python" },
+    { name = "pillow" },
 ]
 
 [package.dev-dependencies]
@@ -1187,6 +1188,7 @@ dev = [
 requires-dist = [
     { name = "flet", specifier = ">=1.0.4" },
     { name = "opencv-python", specifier = ">=5.0.0.93" },
+    { name = "pillow", specifier = ">=12.3.0" },
 ]
 
 [package.metadata.requires-dev]
