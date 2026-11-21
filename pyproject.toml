@@ -9,6 +9,7 @@ authors = [
 ]
 dependencies = [
     "flet>=1.0.4",
+    "numpy>=2.5.3",
     "opencv-python>=5.0.0.93",
     "pillow>=12.3.0",
 ]

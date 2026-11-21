@@ -1172,6 +1172,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "flet" },
+    { name = "numpy" },
     { name = "opencv-python" },
     { name = "pillow" },
 ]
@@ -1187,6 +1188,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "flet", specifier = ">=1.0.4" },
+    { name = "numpy", specifier = ">=2.5.3" },
     { name = "opencv-python", specifier = ">=5.0.0.93" },
     { name = "pillow", specifier = ">=12.3.0" },
 ]
